@@ -1,0 +1,92 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CAST ログイン</title>
+  <style>
+    body {
+      background: linear-gradient(135deg, #002f63, #004c99);
+      font-family: "Noto Sans JP", sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: white;
+      margin: 0;
+    }
+    .login-box {
+      background: rgba(0, 0, 0, 0.5);
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 0 10px rgba(255,255,255,0.2);
+      text-align: center;
+      width: 320px;
+    }
+    h2 {
+      margin-bottom: 20px;
+      font-weight: 500;
+      letter-spacing: 1px;
+    }
+    input {
+      width: 90%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+      font-size: 16px;
+    }
+    button {
+      background-color: #00bfff;
+      color: white;
+      border: none;
+      padding: 12px;
+      width: 100%;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 10px;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background-color: #0095cc;
+    }
+    #error {
+      color: #ffcccb;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <h2>CAST ログイン</h2>
+    <input type="text" id="id" placeholder="IDを入力" />
+    <input type="password" id="ps" placeholder="パスワードを入力" />
+    <button id="loginBtn">ログイン</button>
+    <p id="error"></p>
+  </div>
+
+  <script>
+    const users = {
+      "2406": { name: "まさき", password: "0625" },
+      "2409": { name: "みさと", password: "0926" },
+      "0000": { name: "ゲスト", password: "0000" }
+    };
+
+    document.getElementById("loginBtn").addEventListener("click", () => {
+      const id = document.getElementById("id").value.trim();
+      const ps = document.getElementById("ps").value.trim();
+      const errorMsg = document.getElementById("error");
+
+      if (users[id] && users[id].password === ps) {
+        localStorage.setItem("loginUser", users[id].name);
+        window.location.href = "main.html";
+      } else {
+        errorMsg.textContent = "IDまたはパスワードが違います。";
+      }
+    });
+  </script>
+</body>
+</html>
