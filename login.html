@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CASTログイン</title>
+  <style>
+    body {
+      font-family: "Noto Sans JP", sans-serif;
+      background: linear-gradient(135deg, #4c9aff, #0059ff);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: white;
+    }
+    .login-card {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      width: 300px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      margin-top: 20px;
+      padding: 12px;
+      background-color: #fff;
+      color: #0059ff;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover {
+      background-color: #cce0ff;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <h2>CAST ログイン</h2>
+    <input id="id" placeholder="ID" />
+    <input id="ps" type="password" placeholder="Password" />
+    <button onclick="login()">ログイン</button>
+    <p id="error" style="color: pink; margin-top: 10px;"></p>
+    <audio id="loginSound" src="JR-Nishi.mp3" preload="auto"></audio>
+  </div>
+
+  <script>
+    const users = {
+      2406: "0625", // まさき
+      2409: "0926", // みさと
+      0000: "0000"  // ゲスト
+    };
+
+    function login() {
+      const id = document.getElementById("id").value;
+      const ps = document.getElementById("ps").value;
+      const error = document.getElementById("error");
+      const sound = document.getElementById("loginSound");
+
+      if (users[id] && users[id] === ps) {
+        sound.play();
+        setTimeout(() => {
+          localStorage.setItem("user", id);
+          window.location.href = "main.html";
+        }, 3000);
+      } else {
+        error.textContent = "IDまたはパスワードが間違っています";
+      }
+    }
+  </script>
+</body>
+</html>
