@@ -1,214 +1,135 @@
-/* ----------------------------
-   CASTアプリ 全体スタイル
-   JR東海CAST風：白 × ネイビー × オレンジ
------------------------------*/
-
-/* 全体のベース設定 */
+/* ===== CAST風スケジュールアプリ用デザイン ===== */
 body {
-  margin: 0;
   font-family: "Noto Sans JP", sans-serif;
-  background-color: #f4f6f8;
-  color: #222;
+  background-color: #f2f5fa;
+  margin: 0;
+  padding: 0;
+  color: #333;
 }
 
-/* ログイン画面 -------------------------------- */
-.login-body {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background: linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%);
-}
-
+/* ログイン画面 */
 .login-container {
-  background: white;
-  padding: 40px 50px;
-  border-radius: 20px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-  text-align: center;
-  width: 90%;
-  max-width: 400px;
-}
-
-.login-title {
-  font-size: 26px;
-  color: #002d5c; /* JR東海CASTネイビー */
-  margin-bottom: 30px;
-  font-weight: 700;
-}
-
-.login-form input {
-  width: 100%;
-  padding: 12px;
-  margin: 10px 0;
-  border-radius: 10px;
-  border: 1.5px solid #ccc;
-  font-size: 16px;
-}
-
-.login-form input:focus {
-  outline: none;
-  border-color: #f36c00; /* オレンジ */
-  box-shadow: 0 0 5px rgba(243, 108, 0, 0.4);
-}
-
-.login-btn {
-  width: 100%;
-  padding: 12px;
-  background-color: #f36c00;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 18px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.login-btn:hover {
-  background-color: #d85d00;
-}
-
-.error-msg {
-  color: red;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  margin-top: 10px;
-}
-
-/* メイン画面 -------------------------------- */
-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #002d5c;
-  color: white;
-  padding: 15px 20px;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-header .user-name {
-  font-size: 16px;
-  opacity: 0.9;
-}
-
-main {
-  padding: 20px;
-}
-
-/* 予定カード */
-.schedule-card {
-  background-color: white;
-  border-radius: 15px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  padding: 15px 20px;
-  margin-bottom: 15px;
-  border-left: 6px solid #f36c00;
-  transition: transform 0.2s;
-}
-
-.schedule-card:hover {
-  transform: scale(1.02);
-}
-
-.schedule-title {
-  font-size: 18px;
-  font-weight: bold;
-  margin-bottom: 8px;
-}
-
-.schedule-time {
-  font-size: 14px;
-  color: #555;
-}
-
-/* カード色分け */
-.card-self {
-  border-left-color: #007bff; /* 青：自分 */
-}
-
-.card-others {
-  border-left-color: #ffd43b; /* 黄：他メンバー */
-}
-
-/* ボタン類 */
-.btn {
-  background-color: #f36c00;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 10px;
-  font-weight: bold;
-  cursor: pointer;
-  margin-right: 10px;
-}
-
-.btn:hover {
-  background-color: #d85d00;
-}
-
-/* 点滅アニメーション */
-@keyframes blink-blue {
-  0% { box-shadow: 0 0 0px #007bff; }
-  50% { box-shadow: 0 0 15px #007bff; }
-  100% { box-shadow: 0 0 0px #007bff; }
-}
-
-@keyframes blink-orange {
-  0% { box-shadow: 0 0 0px #f36c00; }
-  50% { box-shadow: 0 0 15px #f36c00; }
-  100% { box-shadow: 0 0 0px #f36c00; }
-}
-
-.blink-blue {
-  animation: blink-blue 2s infinite;
-}
-
-.blink-orange {
-  animation: blink-orange 2s infinite;
-}
-
-/* 忘れ物リスト */
-.forget-list {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.forget-item {
-  background-color: #fff8e1;
-  border-radius: 10px;
-  padding: 10px;
-  text-align: center;
-  font-size: 14px;
-}
-
-.forget-container {
-  background: rgba(255, 255, 255, 0.98);
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
-  z-index: 100;
-  display: none;
-}
-
-.forget-container.active {
-  display: flex;
-}
-
-.forget-container button {
-  margin-top: 20px;
-  padding: 10px 25px;
-  border: none;
-  border-radius: 10px;
-  background-color: #f36c00;
+  justify-content: center;
+  height: 100vh;
+  background: linear-gradient(145deg, #0b3c88, #0052cc);
   color: white;
-  font-weight: bold;
+}
+
+.login-box {
+  background: white;
+  color: #333;
+  padding: 2rem;
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  width: 320px;
+  text-align: center;
+}
+
+.login-box h2 {
+  color: #0b3c88;
+}
+
+.login-box input {
+  width: 100%;
+  padding: 0.7rem;
+  margin: 0.6rem 0;
+  border-radius: 0.5rem;
+  border: 1px solid #ccc;
+}
+
+.login-box button {
+  background-color: #0b3c88;
+  color: white;
+  padding: 0.7rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
   cursor: pointer;
+}
+.login-box button:hover {
+  background-color: #0046b0;
+}
+
+#error-message {
+  color: red;
+  margin-top: 0.5rem;
+}
+
+/* メイン画面 */
+header {
+  background-color: #0b3c88;
+  color: white;
+  padding: 1rem;
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: bold;
+}
+
+.container {
+  padding: 1rem;
+}
+
+button {
+  background-color: #0052cc;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.6rem 1rem;
+  margin: 0.3rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+button:hover {
+  background-color: #003fa3;
+}
+
+/* カード表示 */
+.schedule-card {
+  background: white;
+  border-radius: 1rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  border-left: 6px solid #0b3c88;
+}
+
+.schedule-card h3 {
+  margin: 0;
+  color: #0b3c88;
+}
+
+.schedule-card p {
+  margin: 0.2rem 0;
+}
+
+.my-schedule {
+  border-left-color: #0066ff;
+}
+
+.other-schedule {
+  border-left-color: #ffcc33;
+}
+
+/* フルスクリーン点滅枠 */
+.blink-blue {
+  animation: blinkBlue 2s infinite;
+}
+.blink-orange {
+  animation: blinkOrange 2s infinite;
+}
+
+@keyframes blinkBlue {
+  0% { box-shadow: 0 0 0 3px #0066ff; }
+  50% { box-shadow: 0 0 0 6px transparent; }
+  100% { box-shadow: 0 0 0 3px #0066ff; }
+}
+
+@keyframes blinkOrange {
+  0% { box-shadow: 0 0 0 3px #ff8800; }
+  50% { box-shadow: 0 0 0 6px transparent; }
+  100% { box-shadow: 0 0 0 3px #ff8800; }
 }

@@ -5,37 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CASTスケジュール</title>
   <link rel="stylesheet" href="style.css">
+  <script src="main.js" defer></script>
 </head>
-
 <body>
-  <header>
-    <div>CASTスケジュール</div>
-    <div class="user-name" id="userName"></div>
-  </header>
-
-  <main>
-    <div style="margin-bottom: 20px;">
-      <button class="btn" id="addScheduleBtn">予定を追加</button>
-      <button class="btn" id="switchViewBtn">共有カレンダー</button>
-      <button class="btn" id="fullscreenBtn">大きく表示</button>
-    </div>
-
-    <!-- 予定カードエリア -->
-    <div id="scheduleList"></div>
-
-    <!-- 忘れ物リスト画面 -->
-    <div class="forget-container" id="forgetContainer">
-      <h2>忘れ物リスト</h2>
-      <div class="forget-list" id="forgetList"></div>
-      <button id="forgetCloseBtn">完了</button>
-    </div>
-  </main>
-
-  <!-- 音源 -->
-  <audio id="alarmSound" src="JR-Nishi.mp3" preload="auto"></audio>
-  <audio id="forgetSound" src="Meitetsu.mp3" preload="auto"></audio>
-
-  <script src="main.js"></script>
+  <header id="header-user">CASTスケジュール</header>
+  <div class="container">
+    <button onclick="window.location.href='login.html'">ログアウト</button>
+    <div id="schedule-list"></div>
+  </div>
 </body>
 </html>
+
 
