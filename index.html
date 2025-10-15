@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+<title>CAST - ログイン</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="center-box login-center">
+    <div class="panel login-panel">
+      <h2>CAST ログイン</h2>
+      <label class="label">ID</label>
+      <input id="loginId" class="input large" placeholder="例: 2406">
+      <label class="label">パスワード</label>
+      <input id="loginPs" type="password" class="input large" placeholder="パスワード">
+      <div style="display:flex;gap:12px;margin-top:14px">
+        <button id="btnLogin" class="btn large">ログイン</button>
+        <a href="register.html" class="btn alt large" style="text-align:center;display:inline-block;line-height:38px">新規登録</a>
+      </div>
+      <div id="loginError" class="error"></div>
+      <div style="margin-top:12px;font-size:13px;color:var(--muted)">
+        テストユーザー: まさき(ID:2406 PS:0625), みさと(ID:2409 PS:0926)
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+import { db } from './firebase-config.js';
+import { collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+
+const el = id => document.getElementById(id);
+const usersCol = collection(db, 'users');
+
+el('btnLogin').addEventListener('click', async ()=>{
+  const id = el('loginId').value.trim();
+  const ps = el('loginPs').value.trim();
+  el('loginError').textContent = '';
+  if(!id || !ps){ el('loginError').textContent = 'IDとパスワードを入力してください'; return; }
+  try{
+    const q = query(usersCol, where('id','==', id), where('ps','==', ps));
+    const snap = await getDocs(q);
+    if(snap.empty){
+      el('loginError').textContent = 'IDまたはパスワードが違います';
+      return;
+    }
+    const docu = snap.docs[0].data();
+    localStorage.setItem('loginUser', docu.name);
+    localStorage.setItem('loginId', docu.id);
+    localStorage.setItem('userDocId', snap.docs[0].id);
+    window.location.href = 'main.html';
+  }catch(e){
+    el('loginError').textContent = 'ログインに失敗しました';
+    console.error(e);
+  }
+});
+
+// allow Enter
+document.addEventListener('keydown', (e)=>{ if(e.key==='Enter') el('btnLogin').click(); });
+</script>
+</body>
+</html>

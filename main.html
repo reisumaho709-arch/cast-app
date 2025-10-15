@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+<title>CAST - メイン</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header tablet-header">
+      <div class="header-left">
+        <div class="logo">CAST</div>
+        <div class="user-block">
+          <div id="username" class="name">ユーザー</div>
+          <div id="weekday" class="weekday">—</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <button id="btnFriends" class="btn small">フレンド管理</button>
+        <button id="logoutBtn" class="btn alt small">ログアウト</button>
+      </div>
+    </header>
+
+    <main class="grid tablet-grid">
+      <section class="panel left-panel">
+        <h3>本日の予定</h3>
+        <div id="todayList" class="scroll-area"></div>
+        <button id="openAddEvent" class="btn full">予定追加</button>
+      </section>
+
+      <section class="panel center-panel">
+        <div class="big-card" id="bigCard">
+          <div class="title" id="currentTitle">予定がありません</div>
+          <div class="time" id="currentTime">--:-- — --:--</div>
+          <div class="remaining" id="remaining">— 分</div>
+
+          <div class="side-cards">
+            <div class="small-card" id="next1">次予定：なし</div>
+            <div class="small-card" id="next2">次々予定：なし</div>
+          </div>
+
+          <div class="memos" id="memos"></div>
+
+          <div class="bottom-clock" id="clock">--:--:--</div>
+        </div>
+      </section>
+
+      <aside class="panel right-panel">
+        <h3>フレンド</h3>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input id="friendId" class="input" placeholder="フレンドのIDを入力">
+          <button id="sendReq" class="btn">追加</button>
+        </div>
+        <div id="friendList" style="margin-bottom:10px"></div>
+
+        <h4>受信リクエスト</h4>
+        <div id="incomingReq"></div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- add event modal -->
+  <div id="addEventModal" class="modal"><div class="modal-panel panel">
+    <h3>予定を追加</h3>
+    <label class="label">日付</label><input id="evDate" class="input" type="date">
+    <label class="label">開始</label><input id="evStart" class="input" type="time">
+    <label class="label">終了</label><input id="evEnd" class="input" type="time">
+    <label class="label">タイトル</label><input id="evTitle" class="input" type="text">
+    <label class="label"><input type="checkbox" id="shareToggle"> フレンドと共有する</label>
+    <div id="shareWithArea" style="display:none;margin-top:8px"></div>
+    <div style="text-align:right;margin-top:10px">
+      <button id="saveEventBtn" class="btn">保存</button>
+      <button class="btn alt" onclick="closeModal('addEventModal')">閉じる</button>
+    </div>
+  </div></div>
+
+  <!-- friends modal -->
+  <div id="friendsModal" class="modal"><div class="modal-panel panel">
+    <h3>フレンド管理</h3>
+    <div id="friendsPanel"></div>
+    <div style="text-align:right;margin-top:12px">
+      <button class="btn alt" onclick="closeModal('friendsModal')">閉じる</button>
+    </div>
+  </div></div>
+
+<script type="module">
+import { db } from './firebase-config.js';
+import {
+  collection, addDoc, onSnapshot, query, where, orderBy, doc, updateDoc, deleteDoc, getDocs
+} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+
+const el = id => document.getElementById(id);
+const usersCol = collection(db,'users');
+const eventsCol = collection(db,'events');
+const reqCol = collection(db,'friendRequests');
+
+let currentId = localStorage.getItem('loginId');
+let currentName = localStorage.getItem('loginUser');
+let userDocId = localStorage.getItem('userDocId');
+
+if(!currentId || !currentName){ window.location.href = 'index.html'; }
+
+el('username').textContent = currentName;
+el('weekday').textContent = ['日','月','火','水','木','金','土'][new Date().getDay()] + '曜日';
+
+// modal helpers
+function openModal(id){ el(id).classList.add('show'); }
+function closeModal(id){ el(id).classList.remove('show'); }
+
+// logout
+el('logoutBtn').addEventListener('click', ()=>{
+  localStorage.removeItem('loginUser'); localStorage.removeItem('loginId'); localStorage.removeItem('userDocId');
+  window.location.href = 'index.html';
+});
+
+// open add event
+el('openAddEvent').addEventListener('click', ()=>{ el('evDate').value = new Date().toISOString().slice(0,10); openModal('addEventModal'); });
+
+// share toggle
+el('shareToggle').addEventListener('change', async (e)=>{
+  el('shareWithArea').style.display = e.target.checked ? 'block' : 'none';
+  if(e.target.checked){
+    const uq = query(usersCol, where('id','==', currentId));
+    const udocs = await getDocs(uq);
+    if(!udocs.empty){
+      const me = udocs.docs[0].data();
+      const friends = me.friends || [];
+      const area = el('shareWithArea'); area.innerHTML = '';
+      friends.forEach(fid=>{
+        const row = document.createElement('div');
+        row.innerHTML = `<label><input type="checkbox" class="shareFriend" value="${fid}"> ${fid}</label>`;
+        area.appendChild(row);
+      });
+      if(friends.length===0) area.textContent = 'フレンドがいません';
+    }
+  }
+});
+
+// save event
+el('saveEventBtn').addEventListener('click', async ()=>{
+  const date = el('evDate').value || new Date().toISOString().slice(0,10);
+  const start = el('evStart').value || '00:00';
+  const end = el('evEnd').value || '00:00';
+  const title = el('evTitle').value || '無題';
+  const share = el('shareToggle').checked;
+  const shareWith = [];
+  if(share){
+    document.querySelectorAll('.shareFriend:checked').forEach(ch=> shareWith.push(ch.value));
+  }
+  await addDoc(eventsCol, { date, start, end, title, owner: currentId, ownerName: currentName, sharedWith: shareWith, createdAt: new Date() });
+  closeModal('addEventModal');
+});
+
+// listen events relevant to me (all, will filter in render)
+onSnapshot(query(eventsCol, orderBy('date','desc')), snap=>{
+  const all = [];
+  snap.forEach(d=> all.push({ id:d.id, ...d.data() }));
+  renderEvents(all);
+});
+
+// render events & today's list
+async function renderEvents(all){
+  const uq = query(usersCol, where('id','==', currentId));
+  const udocs = await getDocs(uq);
+  let friends = [];
+  if(!udocs.empty){ friends = udocs.docs[0].data().friends || []; userDocId = udocs.docs[0].id; localStorage.setItem('userDocId', userDocId); }
+  const today = new Date().toISOString().slice(0,10);
+  const todays = all.filter(ev => {
+    if(ev.date !== today) return false;
+    if(ev.owner === currentId) return true;
+    if(Array.isArray(ev.sharedWith) && ev.sharedWith.includes(currentId) && friends.includes(ev.owner)) return true;
+    return false;
+  }).sort((a,b)=> (a.start||'00:00').localeCompare(b.start||'00:00'));
+  const list = el('todayList'); list.innerHTML = '';
+  todays.forEach(e=>{
+    const div = document.createElement('div'); div.className='event-item';
+    div.innerHTML = `<div class="event-time">${e.start} - ${e.end}</div><div class="event-title">${e.title} <div style="font-size:12px;color:var(--muted)">${e.ownerName||e.owner}</div></div>`;
+    if(e.owner !== currentId) div.style.borderLeft = '4px solid orange';
+    div.addEventListener('click', ()=> alert(`${e.title}\n${e.date} ${e.start}-${e.end}\n作成者:${e.ownerName||e.owner}`));
+    list.appendChild(div);
+  });
+  renderFriendsUI(friends);
+}
+
+// FRIENDS: send request
+el('sendReq').addEventListener('click', async ()=>{
+  const target = el('friendId').value.trim();
+  el('friendId').value = '';
+  if(!target){ alert('IDを入力してください'); return; }
+  if(target === currentId){ alert('自分は追加できません'); return; }
+  const q = query(usersCol, where('id','==', target));
+  const s = await getDocs(q);
+  if(s.empty){ alert('そのIDは存在しません'); return; }
+  await addDoc(reqCol, { from: currentId, to: target, fromName: currentName, createdAt: new Date() });
+  alert('フレンド申請を送信しました');
+});
+
+// listen incoming requests
+onSnapshot(query(reqCol, orderBy('createdAt','desc')), snap=>{
+  const arr = [];
+  snap.forEach(d=> arr.push({ docId:d.id, ...d.data() }));
+  const incoming = arr.filter(r=> r.to === currentId);
+  const incEl = el('incomingReq'); incEl.innerHTML = '';
+  incoming.forEach(r=>{
+    const row = document.createElement('div'); row.style.marginBottom='8px';
+    row.innerHTML = `<div>${r.from} (${r.fromName})</div><div style="margin-top:6px"><button class="btn accept" data-id="${r.docId}" data-from="${r.from}">承認</button> <button class="btn alt reject" data-id="${r.docId}">拒否</button></div>`;
+    incEl.appendChild(row);
+  });
+  // attach handlers
+  document.querySelectorAll('.accept').forEach(b=>{
+    b.onclick = async (e)=>{
+      const docId = b.dataset.id; const fromId = b.dataset.from;
+      const myQ = query(usersCol, where('id','==', currentId));
+      const fromQ = query(usersCol, where('id','==', fromId));
+      const mySnap = await getDocs(myQ); const fromSnap = await getDocs(fromQ);
+      if(!mySnap.empty && !fromSnap.empty){
+        const myDoc = mySnap.docs[0]; const fromDoc = fromSnap.docs[0];
+        const myFriends = myDoc.data().friends || []; const fromFriends = fromDoc.data().friends || [];
+        if(!myFriends.includes(fromId)) myFriends.push(fromId);
+        if(!fromFriends.includes(currentId)) fromFriends.push(currentId);
+        await updateDoc(doc(db,'users', myDoc.id), { friends: myFriends });
+        await updateDoc(doc(db,'users', fromDoc.id), { friends: fromFriends });
+      }
+      await deleteDoc(doc(db,'friendRequests', docId));
+    };
+  });
+  document.querySelectorAll('.reject').forEach(b=>{
+    b.onclick = async ()=> { const id = b.dataset.id; await deleteDoc(doc(db,'friendRequests', id)); };
+  });
+});
+
+// render friends UI
+async function renderFriendsUI(friends){
+  const panel = el('friendList'); panel.innerHTML = '';
+  if(!friends || friends.length===0){ panel.textContent = 'フレンドがいません'; return; }
+  for(const fid of friends){
+    const q = query(usersCol, where('id','==', fid));
+    const s = await getDocs(q);
+    const name = (!s.empty) ? s.docs[0].data().name : fid;
+    const row = document.createElement('div'); row.className='friend-row'; row.style.marginBottom='8px';
+    row.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div>${fid} (${name})</div><button class="btn unfriend" data-id="${fid}">解除</button></div>`;
+    panel.appendChild(row);
+  }
+  document.querySelectorAll('.unfriend').forEach(b=>{
+    b.onclick = async ()=>{
+      const fid = b.dataset.id;
+      const myQ = query(usersCol, where('id','==', currentId));
+      const mySnap = await getDocs(myQ);
+      if(!mySnap.empty){
+        const myDoc = mySnap.docs[0];
+        let arr = myDoc.data().friends || [];
+        arr = arr.filter(x=> x !== fid);
+        await updateDoc(doc(db,'users', myDoc.id), { friends: arr });
+      }
+      const otherQ = query(usersCol, where('id','==', fid));
+      const otherSnap = await getDocs(otherQ);
+      if(!otherSnap.empty){
+        const otherDoc = otherSnap.docs[0];
+        let arr2 = otherDoc.data().friends || [];
+        arr2 = arr2.filter(x=> x !== currentId);
+        await updateDoc(doc(db,'users', otherDoc.id), { friends: arr2 });
+      }
+    };
+  });
+}
+
+// friends modal open
+el('btnFriends').addEventListener('click', ()=> openModal('friendsModal'));
+
+// initialize clock
+setInterval(()=> el('clock').textContent = new Date().toLocaleTimeString(),1000);
+
+</script>
+</body>
+</html>

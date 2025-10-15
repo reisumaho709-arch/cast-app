@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+<title>CAST - 新規登録</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="center-box login-center">
+    <div class="panel login-panel">
+      <h2>新規登録</h2>
+      <label class="label">ID（数字）</label>
+      <input id="regId" class="input large" placeholder="例: 2410">
+      <label class="label">名前</label>
+      <input id="regName" class="input large" placeholder="名前">
+      <label class="label">パスワード</label>
+      <input id="regPs" type="password" class="input large" placeholder="パスワード">
+      <div style="display:flex;gap:12px;margin-top:14px">
+        <button id="btnRegister" class="btn large">登録</button>
+        <a href="index.html" class="btn alt large" style="text-align:center;display:inline-block;line-height:38px">戻る</a>
+      </div>
+      <div id="regError" class="error"></div>
+      <div style="margin-top:10px;font-size:13px;color:var(--muted)">※ IDは数字（重複不可）</div>
+    </div>
+  </div>
+
+<script type="module">
+import { db } from './firebase-config.js';
+import { collection, query, where, getDocs, addDoc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+
+const el = id => document.getElementById(id);
+const usersCol = collection(db,'users');
+
+el('btnRegister').addEventListener('click', async ()=>{
+  const id = el('regId').value.trim();
+  const name = el('regName').value.trim();
+  const ps = el('regPs').value.trim();
+  el('regError').textContent = '';
+  if(!id || !name || !ps){ el('regError').textContent = '全て入力してください'; return; }
+  try{
+    const q = query(usersCol, where('id','==', id));
+    const snap = await getDocs(q);
+    if(!snap.empty){ el('regError').textContent = 'そのIDはすでに使われています'; return; }
+    await addDoc(usersCol, { id, name, ps, friends: [] });
+    alert('登録しました。ログインしてください。');
+    window.location.href = 'index.html';
+  }catch(e){
+    console.error(e);
+    el('regError').textContent = '登録に失敗しました';
+  }
+});
+</script>
+</body>
+</html>
