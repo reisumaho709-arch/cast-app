@@ -1,0 +1,113 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CAST - カレンダー</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="header">
+    <div class="logo">CAST カレンダー</div>
+    <div><a class="btn" href="index.html">← メインへ</a></div>
+  </div>
+
+  <div class="panel calendar-panel" style="max-width:1000px;margin:20px auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div>
+        <button id="prev" class="btn alt">＜</button>
+        <button id="today" class="btn alt">今日</button>
+        <button id="next" class="btn alt">＞</button>
+      </div>
+      <div id="monthLabel" style="font-weight:600"></div>
+      <div><button id="openAdd" class="btn">＋ 予定追加</button></div>
+    </div>
+
+    <div id="calendarGrid" class="calendar-grid"></div>
+  </div>
+
+  <!-- modal -->
+  <div id="addModal" class="modal"><div class="modal-panel panel">
+    <h3>予定を追加</h3>
+    <input id="dateInput" class="input" type="date">
+    <input id="startInput" class="input" type="time">
+    <input id="endInput" class="input" type="time">
+    <input id="titleInput" class="input" type="text" placeholder="タイトル">
+    <div style="text-align:right;margin-top:8px">
+      <button id="saveBtn" class="btn">保存</button>
+      <button class="btn alt" onclick="closeModal('addModal')">閉じる</button>
+    </div>
+  </div></div>
+
+  <script>
+  const el = id => document.getElementById(id);
+
+  function loadEvents(){ return JSON.parse(localStorage.getItem('events')||'[]'); }
+  function saveEvents(ev){ localStorage.setItem('events', JSON.stringify(ev)); }
+
+  let viewDate = new Date();
+
+  function renderCalendar(){
+    const y = viewDate.getFullYear(), m = viewDate.getMonth();
+    el('monthLabel').textContent = `${y}年 ${m+1}月`;
+    const first = new Date(y,m,1), last = new Date(y,m+1,0);
+    const startDay = first.getDay(), total = last.getDate();
+
+    const grid = el('calendarGrid'); grid.innerHTML='';
+    // weekday header
+    ['日','月','火','水','木','金','土'].forEach(d=>{
+      const h = document.createElement('div'); h.textContent=d; h.style.fontWeight='600'; h.style.textAlign='center';
+      grid.appendChild(h);
+    });
+    // blanks
+    for(let i=0;i<startDay;i++){ const b=document.createElement('div'); grid.appendChild(b); }
+    // days
+    const all = loadEvents();
+    for(let d=1; d<= total; d++){
+      const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const cell = document.createElement('div'); cell.className='day-cell';
+      cell.innerHTML = `<div class="day-number">${d}</div>`;
+      const dayEvents = all.filter(x=>x.date===dateStr);
+      dayEvents.forEach(ev=>{
+        const evd = document.createElement('div'); evd.className='event-mini'; evd.textContent = ev.title + (ev.start? ' '+ev.start:'');
+        evd.addEventListener('click', (e)=>{ e.stopPropagation(); alert(ev.title + "\n" + (ev.start||'') + " - " + (ev.end||'') ); });
+        cell.appendChild(evd);
+      });
+      cell.addEventListener('click', ()=>{ el('dateInput').value=dateStr; openModal('addModal'); });
+      grid.appendChild(cell);
+    }
+  }
+
+  // navigation
+  el('prev').addEventListener('click', ()=>{ viewDate.setMonth(viewDate.getMonth()-1); renderCalendar(); });
+  el('next').addEventListener('click', ()=>{ viewDate.setMonth(viewDate.getMonth()+1); renderCalendar(); });
+  el('today').addEventListener('click', ()=>{ viewDate = new Date(); renderCalendar(); });
+
+  el('openAdd').addEventListener('click', ()=>{ el('dateInput').value = new Date().toISOString().slice(0,10); openModal('addModal'); });
+
+  el('saveBtn').addEventListener('click', ()=>{
+    const all = loadEvents();
+    all.push({
+      date: el('dateInput').value,
+      start: el('startInput').value,
+      end: el('endInput').value,
+      title: el('titleInput').value,
+      owner: localStorage.getItem('loginUser') || 'ゲスト'
+    });
+    saveEvents(all);
+    closeModal('addModal'); renderCalendar();
+    el('titleInput').value=''; el('startInput').value=''; el('endInput').value='';
+  });
+
+  // modal fns
+  function openModal(id){ el(id).classList.add('show'); }
+  function closeModal(id){ el(id).classList.remove('show'); }
+
+  renderCalendar();
+  </script>
+</body>
+</html>
+
+
+

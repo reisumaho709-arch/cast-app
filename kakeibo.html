@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CAST - 家計簿</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="header">
+    <div class="logo">CAST 家計簿</div>
+    <div><a class="btn" href="index.html">← メインへ</a></div>
+  </div>
+
+  <div class="panel" style="max-width:800px;margin:20px auto">
+    <h3>支出追加</h3>
+    <input id="kbDate" class="input" type="date" value="">
+    <input id="kbTitle" class="input" type="text" placeholder="内容">
+    <input id="kbAmount" class="input" type="number" placeholder="金額">
+    <select id="kbCategory" class="input">
+      <option>食費</option><option>交通</option><option>日用品</option><option>娯楽</option><option>その他</option>
+    </select>
+    <div style="margin-top:8px"><button id="kbAdd" class="btn">追加</button></div>
+  </div>
+
+  <div class="panel" style="max-width:800px;margin:10px auto">
+    <h3>履歴</h3>
+    <div id="kbList"></div>
+    <h3 style="margin-top:12px">合計: <span id="kbTotal">0</span> 円</h3>
+  </div>
+
+  <script>
+  const el = id => document.getElementById(id);
+  function loadK(){ return JSON.parse(localStorage.getItem('kakeibo')||'[]'); }
+  function saveK(a){ localStorage.setItem('kakeibo', JSON.stringify(a)); }
+
+  el('kbAdd').addEventListener('click', ()=>{
+    const arr = loadK();
+    const item = {
+      date: el('kbDate').value || new Date().toISOString().slice(0,10),
+      title: el('kbTitle').value || '無題',
+      amount: Number(el('kbAmount').value) || 0,
+      category: el('kbCategory').value
+    };
+    arr.push(item); saveK(arr); render();
+    el('kbTitle').value=''; el('kbAmount').value='';
+  });
+
+  function render(){
+    const arr = loadK();
+    const list = el('kbList'); list.innerHTML='';
+    let total=0;
+    arr.slice().reverse().forEach(it=>{
+      const row = document.createElement('div'); row.className='kakeibo-item';
+      row.innerHTML = `<div>${it.date}</div><div>${it.title}</div><div>${it.category}</div><div>${it.amount}円</div>`;
+      list.appendChild(row); total += Number(it.amount||0);
+    });
+    el('kbTotal').textContent = total.toLocaleString();
+  }
+
+  // set default date
+  el('kbDate').value = new Date().toISOString().slice(0,10);
+  render();
+  </script>
+</body>
+</html>
+
