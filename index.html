@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CASTログイン</title>
+  <style>
+    body {
+      background: linear-gradient(180deg, #000000 0%, #1a1a1a 100%);
+      font-family: "Segoe UI", sans-serif;
+      color: white;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .login-container {
+      background: #111;
+      border-radius: 20px;
+      padding: 40px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 0 20px rgba(0, 102, 204, 0.6);
+      border: 2px solid #0044cc;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 28px;
+      color: #00aaff;
+      margin-bottom: 30px;
+      letter-spacing: 2px;
+    }
+
+    input {
+      width: 90%;
+      padding: 10px;
+      font-size: 18px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+      background: #222;
+      color: #fff;
+      text-align: center;
+    }
+
+    button {
+      width: 95%;
+      padding: 12px;
+      font-size: 20px;
+      background: #0078d7;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      margin-top: 20px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #0099ff;
+    }
+
+    .error {
+      color: #ff4444;
+      margin-top: 10px;
+      font-size: 16px;
+      height: 22px;
+    }
+
+    .saved-user {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #aaa;
+    }
+
+    @media (orientation: portrait) {
+      .login-container {
+        width: 85%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <h1>CAST ログイン</h1>
+    <input type="text" id="userId" placeholder="ユーザーIDを入力" autocomplete="off" />
+    <input type="password" id="password" placeholder="パスワードを入力" autocomplete="off" />
+    <button onclick="login()">ログイン</button>
+    <div class="error" id="errorMsg"></div>
+    <div class="saved-user" id="savedUser"></div>
+  </div>
+
+  <audio id="loginSound" src="JR-Nishi.mp3" preload="auto"></audio>
+
+  <script>
+    // ユーザーリスト
+    const users = {
+      "2406": { ps: "0625", name: "まさき" },
+      "2409": { ps: "0926", name: "みさと" },
+      "0000": { ps: "0000", name: "ゲスト" }
+    };
+
+    // すでにログイン済みならメインへ
+    const saved = localStorage.getItem("loginUser");
+    if (saved) {
+      document.getElementById("savedUser").innerHTML = `前回ログイン: <b>${saved}</b>`;
+    }
+
+    function login() {
+      const id = document.getElementById("userId").value.trim();
+      const ps = document.getElementById("password").value.trim();
+      const error = document.getElementById("errorMsg");
+
+      if (users[id] && users[id].ps === ps) {
+        localStorage.setItem("loginUser", users[id].name);
+        document.getElementById("loginSound").play();
+
+        // ログイン音後に遷移
+        setTimeout(() => {
+          window.location.href = "main.html";
+        }, 2000);
+      } else {
+        error.textContent = "IDまたはパスワードが間違っています";
+      }
+    }
+  </script>
+</body>
+</html>

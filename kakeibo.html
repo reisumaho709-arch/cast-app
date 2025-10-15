@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CAST 家計簿</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #000000 0%, #1a1a1a 100%);
+      color: white;
+      font-family: "Segoe UI", sans-serif;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #111;
+      padding: 15px 20px;
+      border-bottom: 2px solid #00aaff;
+    }
+
+    .user-info {
+      font-size: 18px;
+      color: #00aaff;
+    }
+
+    .menu {
+      display: flex;
+      gap: 10px;
+    }
+
+    .menu button {
+      background: #0078d7;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      padding: 8px 15px;
+      cursor: pointer;
+    }
+
+    .menu button:hover {
+      background: #0099ff;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .summary {
+      background: #111;
+      padding: 15px 25px;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 80%;
+      margin-bottom: 15px;
+    }
+
+    .summary div {
+      text-align: center;
+    }
+
+    .table-container {
+      background: #111;
+      border-radius: 12px;
+      padding: 15px;
+      width: 85%;
+      overflow-y: auto;
+      max-height: 400px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      color: white;
+    }
+
+    th, td {
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    th {
+      background: #222;
+    }
+
+    .income {
+      color: #00ff88;
+    }
+
+    .expense {
+      color: #ff5555;
+    }
+
+    .add-form {
+      margin-top: 20px;
+      background: #222;
+      padding: 15px;
+      border-radius: 12px;
+      width: 85%;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    input, select {
+      padding: 8px;
+      border-radius: 6px;
+      border: none;
+      background: #111;
+      color: white;
+    }
+
+    .btn {
+      background: #00aaff;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      padding: 10px;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: #0099ff;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="user-info" id="userName">ユーザー</div>
+    <div class="menu">
+      <button onclick="location.href='main.html'">メイン</button>
+      <button onclick="location.href='calendar.html'">カレンダー</button>
+    </div>
+  </header>
+
+  <main>
+    <h2 id="monthTitle"></h2>
+
+    <div class="summary">
+      <div><div>収入</div><div id="incomeTotal" class="income">¥0</div></div>
+      <div><div>支出</div><div id="expenseTotal" class="expense">¥0</div></div>
+      <div><div>残高</div><div id="balanceTotal">¥0</div></div>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>日付</th>
+            <th>区分</th>
+            <th>内容</th>
+            <th>金額</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="recordList"></tbody>
+      </table>
+    </div>
+
+    <div class="add-form">
+      <h3>記録を追加</h3>
+      <input type="date" id="dateInput" />
+      <select id="typeInput">
+        <option value="収入">収入</option>
+        <option value="支出">支出</option>
+      </select>
+      <input type="text" id="descInput" placeholder="内容" />
+      <input type="number" id="amountInput" placeholder="金額 (¥)" />
+      <button class="btn" id="addBtn">追加</button>
+    </div>
+  </main>
+
+  <script type="module">
+    import { db } from "./firebase-config.js";
+    import {
+      collection, addDoc, deleteDoc, doc,
+      onSnapshot, query, orderBy, where
+    } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+    const userName = localStorage.getItem("loginUser") || "ゲスト";
+    document.getElementById("userName").textContent = userName;
+
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth() + 1;
+    document.getElementById("monthTitle").textContent = `${year}年 ${month}月の家計簿`;
+
+    const listEl = document.getElementById("recordList");
+    const incomeEl = document.getElementById("incomeTotal");
+    const expenseEl = document.getElementById("expenseTotal");
+    const balanceEl = document.getElementById("balanceTotal");
+
+    const col = collection(db, "kakeibo");
+
+    // リアルタイム反映
+    const q = query(col, where("user", "==", userName), orderBy("date", "desc"));
+    onSnapshot(q, (snap) => {
+      listEl.innerHTML = "";
+      let income = 0, expense = 0;
+
+      snap.forEach((docu) => {
+        const d = docu.data();
+        const tr = document.createElement("tr");
+        const cls = d.type === "収入" ? "income" : "expense";
+        tr.innerHTML = `
+          <td>${d.date}</td>
+          <td class="${cls}">${d.type}</td>
+          <td>${d.desc}</td>
+          <td>¥${Number(d.amount).toLocaleString()}</td>
+          <td><button onclick="deleteItem('${docu.id}')">削除</button></td>
+        `;
+        listEl.appendChild(tr);
+
+        if (d.type === "収入") income += Number(d.amount);
+        else expense += Number(d.amount);
+      });
+
+      incomeEl.textContent = "¥" + income.toLocaleString();
+      expenseEl.textContent = "¥" + expense.toLocaleString();
+      balanceEl.textContent = "¥" + (income - expense).toLocaleString();
+    });
+
+    // 追加ボタン
+    document.getElementById("addBtn").onclick = async () => {
+      const date = document.getElementById("dateInput").value;
+      const type = document.getElementById("typeInput").value;
+      const desc = document.getElementById("descInput").value.trim();
+      const amount = Number(document.getElementById("amountInput").value);
+
+      if (!date || !desc || !amount) return alert("全て入力してください");
+
+      await addDoc(col, {
+        user: userName,
+        date,
+        type,
+        desc,
+        amount,
+        createdAt: new Date()
+      });
+
+      document.getElementById("descInput").value = "";
+      document.getElementById("amountInput").value = "";
+    };
+
+    // 削除関数（windowに登録）
+    window.deleteItem = async (id) => {
+      if (!confirm("削除しますか？")) return;
+      await deleteDoc(doc(db, "kakeibo", id));
+    };
+  </script>
+</body>
+</html>
