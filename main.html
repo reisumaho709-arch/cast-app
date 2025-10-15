@@ -1,0 +1,548 @@
+
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CAST - メイン</title>
+<style>
+  /* JR東海CAST風：白基調の明るめカード + オレンジアクセント + ダークヘッダ */
+  :root{
+    --bg:#fbfcfd; --panel:#ffffff; --muted:#6b7280;
+    --accent:#ff6600; --accent-2:#007bff; --card-shadow: 0 6px 18px rgba(2,6,23,0.06);
+  }
+  html,body{height:100%;margin:0;font-family:"Noto Sans JP",sans-serif;background:var(--bg);color:#111}
+  header{background:#0b3c88;color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+  .brand{font-weight:900;letter-spacing:2px}
+  .top-right{display:flex;gap:12px;align-items:center}
+  .balance{background:#fff;color:#111;padding:6px 10px;border-radius:8px;font-weight:700}
+  .nav{display:flex;gap:10px}
+  .btn{background:var(--accent);color:#000;padding:8px 12px;border-radius:10px;border:none;font-weight:700;cursor:pointer}
+  .btn.secondary{background:#0ea5e9;color:#000}
+  .container{max-width:1100px;margin:18px auto;padding:12px}
+  .controls{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+  .panel{background:var(--panel);border-radius:12px;padding:12px;border:1px solid rgba(2,6,23,0.06);box-shadow:var(--card-shadow)}
+  .schedule-area{display:flex;flex-direction:column;gap:12px}
+  .card{display:flex;justify-content:space-between;gap:12px;padding:12px;border-radius:12px;background:#fff;box-shadow:var(--card-shadow);align-items:flex-start;border-left:8px solid var(--accent-2)}
+  .card.other{border-left-color:#ffd43b;background:#fffdfa}
+  .card .left{flex:1}
+  .title{font-weight:800;font-size:16px;color:#0b3c88}
+  .meta{color:var(--muted);font-size:13px;margin-top:6px}
+  .times{font-weight:700;font-size:18px;color:#111}
+  .small{font-size:13px;color:var(--muted)}
+  .controls-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+  /* modal */
+  .modal-back{display:none;position:fixed;inset:0;background:rgba(2,6,23,0.6);align-items:center;justify-content:center;z-index:80}
+  .modal{background:#fff;border-radius:12px;padding:16px;width:360px;max-width:94%;color:#111}
+  .field{display:flex;flex-direction:column;margin-bottom:8px}
+  label{font-size:13px;margin-bottom:6px;color:#374151}
+  input[type="text"], input[type="date"], input[type="time"], input[type="number"], textarea, select{
+    padding:8px;border-radius:8px;border:1px solid #e5e7eb;font-size:14px
+  }
+  .row{display:flex;gap:8px;align-items:center}
+  .kakeibo-panel{display:flex;flex-direction:column;gap:8px}
+  .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+  .day{background:#fff;padding:8px;border-radius:8px;min-height:90px;position:relative}
+  .day .date{position:absolute;left:8px;top:8px;font-weight:700;color:#111}
+  .pill{display:block;padding:4px 6px;border-radius:8px;margin-top:28px;font-weight:700;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .pill.own{background:var(--accent-2);color:#000}
+  .pill.other{background:#ffd43b;color:#000}
+  .blink-blue{animation:blinkBlue 1.8s infinite}
+  .blink-orange{animation:blinkOrange 1.8s infinite}
+  @keyframes blinkBlue{50%{box-shadow:0 0 14px 6px rgba(0,123,255,0.14)}}
+  @keyframes blinkOrange{50%{box-shadow:0 0 14px 6px rgba(255,136,0,0.14)}}
+  /* forgot list */
+  .forgot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .forgot-item{background:#fff;padding:10px;border-radius:8px;text-align:center;font-weight:700}
+  .footer-clock{position:fixed;right:18px;bottom:18px;background:#0b3c88;color:#fff;padding:10px 14px;border-radius:10px;font-weight:800;box-shadow:0 6px 20px rgba(2,6,23,0.2)}
+  /* responsive */
+  @media(max-width:720px){
+    .controls{flex-direction:column;align-items:stretch}
+    .card{flex-direction:column}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">CAST</div>
+  <div class="top-right">
+    <div id="dateLabel" class="small"></div>
+    <div id="balanceBox" class="balance">残高：¥0</div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="controls">
+    <div class="nav">
+      <button id="tabSchedule" class="btn">スケジュール</button>
+      <button id="tabKakeibo" class="btn secondary">共有家計簿</button>
+      <button id="tabCalendar" class="btn secondary">共有カレンダー</button>
+      <button id="bigView" class="btn" title="フルスクリーンでカレンダー表示">大きく表示</button>
+    </div>
+    <div class="controls-right">
+      <button id="addBtn" class="btn">予定を追加</button>
+      <button id="logoutBtn" class="btn secondary">ログアウト</button>
+    </div>
+  </div>
+
+  <!-- SCHEDULE TAB -->
+  <section id="viewSchedule" class="panel">
+    <div class="schedule-area" id="scheduleList">
+      <!-- cards injected here -->
+    </div>
+  </section>
+
+  <!-- KAKEIBO TAB -->
+  <section id="viewKakeibo" class="panel" style="display:none">
+    <div class="kakeibo-panel">
+      <div class="row">
+        <label style="width:120px">初期残高</label>
+        <input id="kbInitial" type="number" placeholder="0" style="width:140px">
+        <button id="kbSet" class="btn secondary">設定</button>
+      </div>
+      <div class="row">
+        <label style="width:120px">日付</label>
+        <input id="kbDate" type="date" value="">
+        <label style="width:80px">種別</label>
+        <select id="kbType"><option value="add">追加</option><option value="use">利用</option></select>
+      </div>
+      <div class="row">
+        <label style="width:120px">項目</label>
+        <input id="kbItem" type="text" placeholder="項目名">
+      </div>
+      <div class="row">
+        <label style="width:120px">金額（円）</label>
+        <input id="kbAmount" type="number" placeholder="0">
+      </div>
+      <div class="row">
+        <label style="width:120px">メモ</label>
+        <input id="kbMemo" type="text" placeholder="メモ">
+      </div>
+      <div style="text-align:right">
+        <button id="kbAdd" class="btn">登録</button>
+      </div>
+      <div id="kbList" style="margin-top:12px;max-height:300px;overflow:auto"></div>
+    </div>
+  </section>
+
+  <!-- CALENDAR TAB -->
+  <section id="viewCalendar" class="panel" style="display:none">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <button id="prevMonth" class="btn secondary">◀</button>
+      <div id="calTitle" class="small" style="font-weight:800"></div>
+      <button id="nextMonth" class="btn secondary">▶</button>
+      <div style="flex:1"></div>
+      <div class="small">表示: <span id="calMode">共有カレンダー</span></div>
+    </div>
+    <div id="calendarGrid" class="calendar-grid"></div>
+  </section>
+</div>
+
+<!-- ADD MODAL -->
+<div id="addModal" class="modal-back">
+  <div class="modal">
+    <h3>予定を追加</h3>
+    <div class="field"><label>タイトル</label><input id="m_title" type="text" placeholder="予定タイトル"></div>
+    <div class="field"><label>日付</label><input id="m_date" type="date"></div>
+    <div class="row field"><div style="flex:1"><label>開始</label><input id="m_start" type="time"></div><div style="flex:1"><label>終了</label><input id="m_end" type="time"></div></div>
+    <div class="field"><label>担当者</label><select id="m_owner"><option>まさき</option><option>みさと</option><option>ゲスト</option></select></div>
+    <div class="row field"><label style="width:140px">アラーム</label>
+      <select id="m_alarmSel"><option value="no">いいえ</option><option value="yes">はい</option></select>
+      <input id="m_alarmMin" type="number" min="0" value="10" style="width:80px;margin-left:8px;display:none">
+    </div>
+    <div class="field"><label>忘れ物リストを表示</label><input id="m_forget" type="checkbox"></div>
+    <div style="text-align:right;margin-top:8px">
+      <button id="m_save" class="btn">追加</button>
+      <button id="m_cancel" class="btn secondary">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- FORGOT MODAL -->
+<div id="forgotModal" class="modal-back">
+  <div class="modal">
+    <h3>忘れ物リスト</h3>
+    <div class="forgot-grid" id="forgotGrid"></div>
+    <div style="text-align:right;margin-top:12px"><button id="forgotDone" class="btn">完了</button></div>
+  </div>
+</div>
+
+<!-- FULL CAL (for BigView) -->
+<div id="fullCal" class="modal-back" style="padding:18px">
+  <div class="modal" style="width:95%;max-width:1100px;height:85vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div><h3 id="fullCalTitle">月間カレンダー</h3><div id="fullCalSub" class="small"></div></div>
+      <div><button id="exitFull" class="btn secondary">終了</button></div>
+    </div>
+    <div id="fullGrid" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<!-- footer clock -->
+<div id="clock" class="footer-clock">--:--</div>
+
+<!-- audio -->
+<audio id="audioJR" src="JR-Nishi.mp3" preload="auto"></audio>
+<audio id="audioME" src="Meitetsu.mp3" preload="auto"></audio>
+
+<script>
+/* ------------------------
+  State & storage keys
+-------------------------*/
+const STORE_KEY = 'cast_schedules_v1';
+const KAI_KEY = 'cast_kakeibo_v1';
+const USER_KEY = 'loginUser';
+
+let state = { schedules: [], kakeibo: {} };
+let currentUser = localStorage.getItem(USER_KEY) || 'ゲスト';
+
+/* default forgot items */
+const FORGOT_ITEMS = ["免許証","財布","水筒","ハンカチ","スタンプブック","エコバッグ","リップ","歯ブラシ","お風呂セット"];
+
+/* DOM refs */
+const dateLabel = document.getElementById('dateLabel');
+const scheduleList = document.getElementById('scheduleList');
+const addModal = document.getElementById('addModal');
+const forgotModal = document.getElementById('forgotModal');
+const fullCal = document.getElementById('fullCal');
+const fullGrid = document.getElementById('fullGrid');
+const calendarGrid = document.getElementById('calendarGrid');
+const calTitle = document.getElementById('calTitle');
+const calMode = document.getElementById('calMode');
+const balanceBox = document.getElementById('balanceBox');
+const audioJR = document.getElementById('audioJR');
+const audioME = document.getElementById('audioME');
+const clockEl = document.getElementById('clock');
+
+/* UI elements in modal */
+const m_title = document.getElementById('m_title');
+const m_date = document.getElementById('m_date');
+const m_start = document.getElementById('m_start');
+const m_end = document.getElementById('m_end');
+const m_owner = document.getElementById('m_owner');
+const m_alarmSel = document.getElementById('m_alarmSel');
+const m_alarmMin = document.getElementById('m_alarmMin');
+const m_forget = document.getElementById('m_forget');
+
+const kbInitial = document.getElementById('kbInitial');
+const kbSet = document.getElementById('kbSet');
+const kbDate = document.getElementById('kbDate');
+const kbType = document.getElementById('kbType');
+const kbItem = document.getElementById('kbItem');
+const kbAmount = document.getElementById('kbAmount');
+const kbMemo = document.getElementById('kbMemo');
+const kbAdd = document.getElementById('kbAdd');
+const kbList = document.getElementById('kbList');
+
+/* calendar nav */
+let today = new Date();
+let curYear = today.getFullYear(), curMonth = today.getMonth();
+
+/* helper funcs */
+function saveState(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); localStorage.setItem(KAI_KEY, JSON.stringify(state.kakeibo)); updateBalanceUI(); }
+function loadState(){ const raw = localStorage.getItem(STORE_KEY); const k = localStorage.getItem(KAI_KEY); if(raw) state = JSON.parse(raw); else { state = { schedules: [], kakeibo: {} }; } if(k) state.kakeibo = JSON.parse(k); updateBalanceUI(); }
+function idGen(){ return 'e'+Math.random().toString(36).slice(2,9); }
+function formatYMD(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}`; }
+function nowTimeStr(){ const d=new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+
+/* initialize */
+loadState();
+document.getElementById('m_date').value = formatYMD(new Date());
+kbDate.value = formatYMD(new Date());
+renderClock(); setInterval(renderClock,1000);
+renderDateLabel(); renderView();
+
+/* render top date */
+function renderDateLabel(){ const d=new Date(); const w=['日','月','火','水','木','金','土']; dateLabel.textContent = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${w[d.getDay()]}）`; }
+
+/* -------------------------
+  Render schedule cards (自分の予定のみ in SCHEDULE tab)
+--------------------------*/
+function renderView(){
+  // tabs handled separately
+  renderSchedules();
+  renderCalendar(curYear,curMonth);
+  renderKakeiboUI();
+}
+
+function renderSchedules(){
+  scheduleList.innerHTML = '';
+  // only show current user's schedules in schedule tab
+  const userSchedules = state.schedules.slice().filter(s=> s.owner === currentUser).sort((a,b)=> (a.date===b.date? a.start.localeCompare(b.start): a.date.localeCompare(b.date)));
+  if(userSchedules.length===0){
+    scheduleList.innerHTML = '<div class="small" style="text-align:center;color:var(--muted)">予定がありません。</div>';
+    return;
+  }
+  userSchedules.forEach(ev=>{
+    const card = document.createElement('div'); card.className='card';
+    const left = document.createElement('div'); left.className='left';
+    left.innerHTML = `<div class="title">${escape(ev.title)}</div><div class="meta">${escape(ev.date)}</div><div class="meta">${escape(ev.owner)}</div>`;
+    const right = document.createElement('div'); right.innerHTML = `<div class="times">${ev.start} 〜 ${ev.end}</div><div class="small" style="margin-top:8px">${ev.memo||''}</div>`;
+    card.appendChild(left); card.appendChild(right);
+    // blinking logic
+    const startMs = new Date(ev.date+'T'+ev.start+':00').getTime();
+    const endMs = new Date(ev.date+'T'+ev.end+':00').getTime();
+    const nowMs = Date.now();
+    if(nowMs >= startMs && nowMs < endMs){
+      card.classList.add('blink-blue');
+    } else if(startMs - nowMs <= 40*60000 && startMs - nowMs > 0){
+      card.classList.add('blink-orange');
+    }
+    // click -> details
+    card.addEventListener('click', ()=> showDetails(ev.id));
+    // double-tap / dblclick to complete
+    let lastTap = 0;
+    card.addEventListener('dblclick', ()=> {
+      if(confirm('この予定を終了しますか？')) {
+        state.schedules = state.schedules.filter(s=> s.id !== ev.id);
+        saveState(); renderView();
+      }
+    });
+    scheduleList.appendChild(card);
+  });
+}
+
+/* show details modal (simple alert for now) */
+function showDetails(id){
+  const ev = state.schedules.find(s=> s.id===id);
+  if(!ev) return;
+  alert(`${ev.title}\n${ev.date} ${ev.start}〜${ev.end}\n担当：${ev.owner}\n\n${ev.memo||''}`);
+}
+
+/* -------------------------
+  Add schedule modal handlers
+--------------------------*/
+document.getElementById('addBtn').addEventListener('click', ()=> openAdd());
+m_alarmSel.addEventListener('change', ()=> { m_alarmMin.style.display = (m_alarmSel.value==='yes'?'inline-block':'none') });
+
+document.getElementById('m_cancel').addEventListener('click', ()=> closeAdd());
+document.getElementById('m_save').addEventListener('click', ()=> {
+  const title = m_title.value.trim(); const date = m_date.value; const start = m_start.value; const end = m_end.value; const owner = m_owner.value; const alarm = m_alarmSel.value==='yes'; const alarmMin = Number(m_alarmMin.value||0); const forget = m_forget.checked;
+  if(!title || !date || !start || !end) return alert('タイトル・日付・開始・終了は必須です');
+  const ev = { id:idGen(), title, date, start, end, owner, memo:'', alarm:{enabled:alarm, minutes:alarmMin}, forget, created: new Date().toISOString() };
+  state.schedules.push(ev); saveState(); closeAdd(); renderView(); scheduleCheckImmediate();
+});
+
+function openAdd(){
+  addModal.style.display='flex';
+  m_title.value=''; m_date.value = formatYMD(new Date()); m_start.value='09:00'; m_end.value='17:30'; m_owner.value=currentUser; m_alarmSel.value='no'; m_alarmMin.value=10; m_forget.checked=false;
+}
+function closeAdd(){ addModal.style.display='none'; }
+
+/* -------------------------
+  Calendar rendering (shared & monthly)
+--------------------------*/
+function renderCalendar(year, month){
+  calTitle.textContent = `${year}年 ${month+1}月`;
+  calendarGrid.innerHTML = '';
+  const first = new Date(year, month, 1); const start = first.getDay();
+  const days = new Date(year, month+1, 0).getDate();
+  // leading blanks
+  for(let i=0;i<start;i++){ const b=document.createElement('div'); b.className='day'; calendarGrid.appendChild(b); }
+  const nowMs = Date.now();
+  for(let d=1; d<=days; d++){
+    const cell = document.createElement('div'); cell.className='day';
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    cell.innerHTML = `<div class="date">${d}</div>`;
+    // collect events on date (all users)
+    const events = state.schedules.filter(s=> s.date===dateStr).sort((a,b)=> a.start.localeCompare(b.start));
+    events.forEach(ev=>{
+      const pill = document.createElement('div');
+      pill.className = 'pill ' + (ev.owner===currentUser? 'own':'other');
+      pill.textContent = `${ev.start} ${ev.title}`;
+      // blinking
+      const evStart = new Date(ev.date+'T'+ev.start+':00').getTime();
+      const evEnd = new Date(ev.date+'T'+ev.end+':00').getTime();
+      if(nowMs >= evStart && nowMs < evEnd) { pill.classList.add('blink-blue'); }
+      else if(evStart - nowMs <= 40*60000 && evStart - nowMs > 0) { pill.classList.add('blink-orange'); }
+      pill.addEventListener('click', ()=> alert(`${ev.title}\n${ev.start}〜${ev.end}\n担当:${ev.owner}\n\n${ev.memo||''}`));
+      cell.appendChild(pill);
+    });
+    calendarGrid.appendChild(cell);
+  }
+}
+
+/* full calendar */
+document.getElementById('bigView').addEventListener('click', ()=> {
+  renderFull(curYear,curMonth);
+  fullCal.style.display='flex';
+  // fullscreen API
+  const el = fullCal.querySelector('.modal');
+  if(el.requestFullscreen) el.requestFullscreen().catch(()=>{});
+});
+document.getElementById('exitFull').addEventListener('click', ()=> {
+  fullCal.style.display='none';
+  if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+});
+function renderFull(year,month){
+  document.getElementById('fullCalTitle').textContent = `${year}年${month+1}月 月間カレンダー`;
+  const container = fullGrid; container.innerHTML='';
+  const first = new Date(year, month, 1); const start = first.getDay();
+  const days = new Date(year, month+1, 0).getDate();
+  for(let i=0;i<start;i++){ const b=document.createElement('div'); b.className='day'; container.appendChild(b); }
+  const nowMs = Date.now();
+  for(let d=1; d<=days; d++){
+    const cell = document.createElement('div'); cell.className='day';
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    cell.innerHTML = `<div class="date">${d}</div>`;
+    const events = state.schedules.filter(s=> s.date===dateStr).sort((a,b)=> a.start.localeCompare(b.start));
+    events.forEach(ev=>{
+      const pill = document.createElement('div');
+      pill.className = 'pill ' + (ev.owner===currentUser? 'own':'other');
+      pill.textContent = `${ev.start} ${ev.title}`;
+      const evStart = new Date(ev.date+'T'+ev.start+':00').getTime();
+      const evEnd = new Date(ev.date+'T'+ev.end+':00').getTime();
+      if(nowMs >= evStart && nowMs < evEnd){ pill.classList.add('blink-blue'); pill.style.border='2px solid rgba(0,123,255,0.9)'; }
+      else if(evStart - nowMs <= 40*60000 && evStart - nowMs > 0){ pill.classList.add('blink-orange'); pill.style.border='2px solid rgba(255,136,0,0.9)'; }
+      pill.addEventListener('click', ()=> alert(`${ev.title}\n${ev.start}〜${ev.end}\n担当:${ev.owner}`));
+      cell.appendChild(pill);
+    });
+    container.appendChild(cell);
+  }
+}
+
+/* calendar nav */
+document.getElementById('prevMonth').addEventListener('click', ()=>{ curMonth--; if(curMonth<0){curMonth=11;curYear--;} renderCalendar(curYear,curMonth); });
+document.getElementById('nextMonth').addEventListener('click', ()=>{ curMonth++; if(curMonth>11){curMonth=0;curYear++;} renderCalendar(curYear,curMonth); });
+
+/* -------------------------
+  Tab handling
+--------------------------*/
+document.getElementById('tabSchedule').addEventListener('click', ()=> { showTab('schedule'); });
+document.getElementById('tabKakeibo').addEventListener('click', ()=> { showTab('kakeibo'); });
+document.getElementById('tabCalendar').addEventListener('click', ()=> { showTab('calendar'); });
+
+function showTab(name){
+  document.getElementById('viewSchedule').style.display = name==='schedule' ? 'block':'none';
+  document.getElementById('viewKakeibo').style.display = name==='kakeibo' ? 'block':'none';
+  document.getElementById('viewCalendar').style.display = name==='calendar' ? 'block':'none';
+  calMode.textContent = (name==='calendar') ? '共有カレンダー' : '';
+}
+
+/* -------------------------
+  Kakeibo (shared wallet)
+--------------------------*/
+function ensureKKey(key){ if(!state.kakeibo[key]) state.kakeibo[key] = { balance:0, items:[] }; }
+function updateBalanceUI(){
+  const key = getMonthKey(new Date());
+  ensureKKey(key);
+  balanceBox.textContent = '残高：¥' + Number(state.kakeibo[key].balance||0).toLocaleString();
+}
+function renderKakeiboUI(){
+  const key = getMonthKey(new Date()); ensureKKey(key);
+  kbList.innerHTML = state.kakeibo[key].items.slice().reverse().map(it=> `<div style="background:#fff;padding:8px;border-radius:8px;color:#111;margin-top:6px">${it.date} ${escape(it.title)} ¥${Number(it.amount).toLocaleString()}<div class="small">${escape(it.memo||'')}</div></div>`).join('');
+  updateBalanceUI();
+}
+kbSet.addEventListener('click', ()=> {
+  const val = Number(kbInitial.value||0);
+  const key = getMonthKey(new Date()); ensureKKey(key); state.kakeibo[key].balance = val; saveState(); renderKakeiboUI();
+});
+kbAdd.addEventListener('click', ()=> {
+  const date = kbDate.value || formatYMD(new Date());
+  const type = kbType.value;
+  const title = kbItem.value || '項目';
+  const amount = Number(kbAmount.value||0);
+  const memo = kbMemo.value || '';
+  const key = getMonthKey(new Date()); ensureKKey(key);
+  const amt = type==='add'? Math.abs(amount) : -Math.abs(amount);
+  state.kakeibo[key].items.push({ id:idGen(), date, title, amount:amt, memo });
+  state.kakeibo[key].balance = (state.kakeibo[key].balance||0) + amt;
+  saveState(); renderKakeiboUI();
+  // clear inputs
+  kbItem.value=''; kbAmount.value=''; kbMemo.value='';
+});
+
+/* month key helper */
+function getMonthKey(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+
+/* -------------------------
+  Forgot list handling
+--------------------------*/
+document.getElementById('forgotDone').addEventListener('click', ()=> { forgotModal.style.display='none'; });
+function showForgot(){
+  const grid = document.getElementById('forgotGrid'); grid.innerHTML='';
+  FORGOT_ITEMS.forEach(item=>{
+    const el = document.createElement('div'); el.className='forgot-item'; el.textContent=item; grid.appendChild(el);
+  });
+  forgotModal.style.display='flex';
+}
+
+/* -------------------------
+  Alarm scheduling & checker
+--------------------------*/
+function scheduleCheckImmediate(){
+  // run checker to fire any due alarms
+  checkAlarms();
+}
+/* periodic check (handles background throttling) */
+setInterval(checkAlarms,15000);
+function checkAlarms(){
+  const now = Date.now();
+  state.schedules.forEach(ev=>{
+    const startMs = new Date(ev.date+'T'+ev.start+':00').getTime();
+    // alarm
+    if(ev.alarm && ev.alarm.enabled && !ev._alarmFired){
+      const alarmMs = startMs - (ev.alarm.minutes||0)*60000;
+      if(now >= alarmMs){
+        try{ audioJR.currentTime=0; audioJR.play().catch(()=>{}); }catch(e){}
+        ev._alarmFired = true;
+        notifyInApp(`${ev.title} の開始が近づいています`, `${ev.start} に開始します（${ev.alarm.minutes}分前）`);
+      }
+    }
+    // forget
+    if(ev.forget && !ev._forgetFired){
+      const forgetMs = startMs - 10*60000;
+      if(now >= forgetMs){
+        try{ audioME.currentTime=0; audioME.play().catch(()=>{}); }catch(e){}
+        ev._forgetFired = true;
+        showForgot();
+        notifyInApp(`${ev.title} の忘れ物確認`, `予定開始10分前です。忘れ物リストを確認してください。`);
+      }
+    }
+  });
+  saveState();
+}
+
+/* in-app notify (simple) */
+function notifyInApp(title, body){
+  try{
+    if("Notification" in window && Notification.permission === "granted"){
+      new Notification(title, { body });
+    } else if("Notification" in window && Notification.permission !== "denied"){
+      Notification.requestPermission().then(p=>{ if(p==='granted') new Notification(title,{body}); });
+    } else {
+      // fallback small UI - console
+      console.log('通知',title,body);
+    }
+  }catch(e){}
+}
+
+/* -------------------------
+  Helpers & misc
+--------------------------*/
+function escape(s){ return (s||'').toString().replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+function renderClock(){ clockEl.textContent = nowTimeStr(); }
+
+/* logout */
+document.getElementById('logoutBtn').addEventListener('click', ()=>{ if(confirm('ログアウトしますか？')){ localStorage.removeItem(USER_KEY); location.href='index.html'; } });
+
+/* initial calendar render */
+renderCalendar(curYear,curMonth);
+
+/* update UI balance at start */
+updateBalanceUI();
+
+/* -------------------------
+  Small UX improvements: show/hide modals via click on backdrop
+--------------------------*/
+document.querySelectorAll('.modal-back').forEach(back=>{
+  back.addEventListener('click', (e)=>{ if(e.target===back) back.style.display='none'; });
+});
+
+/* export: allow other actions */
+window.openFullCalendar = ()=> { document.getElementById('bigView').click(); };
+</script>
+</body>
+</html>
+
