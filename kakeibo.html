@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>家計簿 - CAST</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="module" src="firebase-config.js"></script>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <div class="header-left">
+        <div class="logo">💰 家計簿</div>
+      </div>
+      <div class="header-right">
+        <a href="index.html" class="btn alt">🏠 メインへ</a>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>支出追加</h2>
+      <div class="form-row">
+        <label>日付</label>
+        <input type="date" id="kDate" class="input">
+      </div>
+      <div class="form-row">
+        <label>項目</label>
+        <input type="text" id="kItem" class="input" placeholder="例：昼食、交通費など">
+      </div>
+      <div class="form-row">
+        <label>金額</label>
+        <input type="number" id="kAmount" class="input" placeholder="円">
+      </div>
+      <button class="btn" id="kAddBtn">追加</button>
+    </div>
+
+    <div class="panel">
+      <h2>履歴</h2>
+      <table class="table" id="kTable">
+        <thead>
+          <tr><th>日付</th><th>項目</th><th>金額</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div style="text-align:right;margin-top:8px;font-weight:bold;">
+        合計：<span id="total">0</span> 円
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db } from "./firebase-config.js";
+    import { collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+    const ref = collection(db, "kakeibo");
+    const tbody = document.querySelector("#kTable tbody");
+    const totalSpan = document.getElementById("total");
+    let total = 0;
+
+    // Firestoreリアルタイム読み取り
+    onSnapshot(ref, (snapshot) => {
+      tbody.innerHTML = "";
+      total = 0;
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${d.date}</td><td>${d.item}</td><td>${d.amount.toLocaleString()}円</td>`;
+        tbody.appendChild(tr);
+        total += d.amount;
+      });
+      totalSpan.textContent = total.toLocaleString();
+    });
+
+    // データ追加
+    document.getElementById("kAddBtn").addEventListener("click", async () => {
+      const date = document.getElementById("kDate").value;
+      const item = document.getElementById("kItem").value;
+      const amount = Number(document.getElementById("kAmount").value);
+
+      if (!date || !item || !amount) {
+        alert("すべて入力してください");
+        return;
+      }
+
+      await addDoc(ref, { date, item, amount, createdAt: new Date() });
+      alert("追加しました！");
+      document.getElementById("kItem").value = "";
+      document.getElementById("kAmount").value = "";
+    });
+  </script>
+</body>
+</html>

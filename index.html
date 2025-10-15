@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CAST - メイン</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- ヘッダー -->
+    <div class="header">
+      <div class="header-left">
+        <div class="logo">CAST</div>
+        <div class="user-block">
+          <div id="username" class="name">ユーザー</div>
+          <div id="weekday" class="weekday"></div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="icon-btn" id="checkBtn" title="忘れ物チェック">🧰</div>
+        <div class="icon-btn" id="bellBtn" title="アラーム">🔔</div>
+        <div class="icon-btn" id="settingsBtn" title="設定">⚙️</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- left -->
+      <div class="left-panel">
+        <h3 style="margin-bottom:10px">本日の予定</h3>
+        <div id="todayList"></div>
+      </div>
+
+      <!-- center -->
+      <div class="center-panel">
+        <div class="big-card" id="bigCard">
+          <div class="title" id="currentTitle">予定がありません</div>
+          <div class="time" id="currentTime">--:-- — --:--</div>
+          <div class="remaining" id="remaining">— 分</div>
+
+          <div class="side-cards">
+            <div class="small-card" id="next1">次予定：なし</div>
+            <div class="small-card" id="next2">次々予定：なし</div>
+          </div>
+
+          <div class="memos" id="memos"></div>
+          <div class="bottom-clock" id="clock">--:--:--</div>
+        </div>
+      </div>
+
+      <!-- right -->
+      <div>
+        <div class="panel">
+          <div style="margin-bottom:8px;font-weight:700">ショートカット</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a class="btn" href="calendar.html">共有カレンダーへ</a>
+            <a class="btn" href="kakeibo.html">家計簿へ</a>
+            <button class="btn alt" id="addMemoQuick">メモ追加</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- audio -->
+  <audio id="alarmSound" src="Meitetsu.mp3" preload="auto"></audio>
+
+  <!-- モーダル -->
+  <div class="modal" id="checkModal">
+    <div class="panel">
+      <h3>忘れ物チェック</h3>
+      <div id="checkList"></div>
+      <div style="margin-top:12px;text-align:right">
+        <button class="btn" id="checkConfirm">確認</button>
+        <button class="btn alt" onclick="closeModal('checkModal')">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="settingsModal">
+    <div class="panel">
+      <h3>設定</h3>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn" id="openAddEvent">予定追加</button>
+        <button class="btn" id="openAddMemo">メモ追加</button>
+        <a class="btn" href="calendar.html">共有カレンダー</a>
+        <a class="btn" href="kakeibo.html">家計簿</a>
+      </div>
+      <div style="margin-top:12px;text-align:right">
+        <button class="btn alt" onclick="closeModal('settingsModal')">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="addEventModal">
+    <div class="panel">
+      <h3>予定を追加</h3>
+      <div class="form-row"><label>日付</label><input id="evDate" class="input" type="date" /></div>
+      <div class="form-row"><label>開始時間</label><input id="evStart" class="input" type="time" /></div>
+      <div class="form-row"><label>終了時間</label><input id="evEnd" class="input" type="time" /></div>
+      <div class="form-row"><label>タイトル</label><input id="evTitle" class="input" type="text" /></div>
+      <div style="text-align:right">
+        <button class="btn" id="saveEventBtn">追加</button>
+        <button class="btn alt" onclick="closeModal('addEventModal')">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="addMemoModal">
+    <div class="panel">
+      <h3>メモを追加</h3>
+      <div class="form-row"><label>題名</label><input id="memoTitle" class="input" type="text" /></div>
+      <div class="form-row"><label>内容</label><textarea id="memoBody" class="input" rows="5"></textarea></div>
+      <div style="text-align:right">
+        <button class="btn" id="saveMemoBtn">保存</button>
+        <button class="btn alt" onclick="closeModal('addMemoModal')">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const el = id => document.getElementById(id);
+    el("username").textContent = localStorage.getItem("loginUser") || "ゲスト";
+    const weekdayNames = ["日","月","火","水","木","金","土"];
+    el("weekday").textContent = weekdayNames[new Date().getDay()];
+
+    const checkItems = ["免許証","財布","水筒","ハンカチ","エコバック","リップ","お風呂セット"];
+    checkItems.forEach(it=>{
+      const d = document.createElement("div");
+      d.className = "check-item";
+      d.textContent = it;
+      d.onclick = ()=> d.classList.toggle("checked");
+      el("checkList").appendChild(d);
+    });
+
+    window.openModal = id => el(id).classList.add("show");
+    window.closeModal = id => el(id).classList.remove("show");
+    el("checkBtn").onclick = ()=> openModal("checkModal");
+    el("bellBtn").onclick = ()=> { const s=el("alarmSound"); s.play(); setTimeout(()=>s.pause(),2000); };
+    el("settingsBtn").onclick = ()=> openModal("settingsModal");
+    el("openAddEvent").onclick = ()=> {closeModal("settingsModal");openModal("addEventModal");};
+    el("openAddMemo").onclick = ()=> {closeModal("settingsModal");openModal("addMemoModal");};
+    el("addMemoQuick").onclick = ()=> openModal("addMemoModal");
+    el("checkConfirm").onclick = ()=> {alert("確認しました"); closeModal("checkModal");};
+
+    let events = JSON.parse(localStorage.getItem("events") || "[]");
+    let memos = JSON.parse(localStorage.getItem("memos") || "[]");
+
+    function saveAll(){ 
+      localStorage.setItem("events", JSON.stringify(events)); 
+      localStorage.setItem("memos", JSON.stringify(memos)); 
+    }
+
+    el("saveEventBtn").onclick = ()=>{
+      const e={date:el("evDate").value,start:el("evStart").value,end:el("evEnd").value,title:el("evTitle").value};
+      if(!e.date||!e.title)return alert("入力不足");
+      events.push(e); saveAll(); closeModal("addEventModal"); render();
+    };
+
+    el("saveMemoBtn").onclick = ()=>{
+      const m={title:el("memoTitle").value,body:el("memoBody").value,date:new Date().toLocaleString()};
+      if(!m.title)return alert("題名が必要");
+      memos.unshift(m); saveAll(); closeModal("addMemoModal"); render();
+    };
+
+    function render(){
+      const todayStr = new Date().toISOString().split("T")[0];
+      const todays = events.filter(e=>e.date===todayStr).sort((a,b)=>a.start.localeCompare(b.start));
+      const container = el("todayList"); container.innerHTML="";
+      todays.forEach(e=>{
+        const d=document.createElement("div");
+        d.className="event-item";
+        d.innerHTML=`<div class='event-time'>${e.start}-${e.end}</div><div class='event-title'>${e.title}</div>`;
+        container.appendChild(d);
+      });
+
+      const nowMin = new Date().getHours()*60+new Date().getMinutes();
+      const parsed = todays.map(e=>{
+        const [sh,sm]=e.start.split(":").map(Number);
+        const [eh,em]=e.end.split(":").map(Number);
+        return {...e,sMin:sh*60+sm,eMin:eh*60+em};
+      });
+      let current = parsed.find(p=>p.sMin<=nowMin&&nowMin<p.eMin);
+      let next = parsed.find(p=>p.sMin>nowMin);
+      let next2 = parsed.filter(p=>p.sMin>nowMin)[1];
+      el("currentTitle").textContent = current?current.title:"予定がありません";
+      el("currentTime").textContent = current?`${current.start} — ${current.end}`:"--:-- — --:--";
+      el("next1").textContent = next?`次予定：${next.title}`:"次予定：なし";
+      el("next2").textContent = next2?`次々予定：${next2.title}`:"次々予定：なし";
+      el("remaining").textContent = current?(current.eMin-nowMin)+" 分":"— 分";
+
+      const memosEl = el("memos"); memosEl.innerHTML="";
+      memos.forEach(m=>{
+        const d=document.createElement("div");
+        d.className="memo-card";
+        d.innerHTML=`<div class='memo-title'>${m.title}</div><div class='memo-body'>${m.body}</div>`;
+        memosEl.appendChild(d);
+      });
+    }
+
+    setInterval(()=>{el("clock").textContent=new Date().toLocaleTimeString(); render();},1000);
+    render();
+  </script>
+</body>
+</html>
+
