@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>カレンダー | Cast App</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- ヘッダー -->
+    <div class="header">
+      <div class="header-left">
+        <a href="index.html" class="logo">Cast App</a>
+        <div class="weekday" id="today-label">Loading...</div>
+      </div>
+      <div class="header-right">
+        <a href="calendar.html" class="btn alt">カレンダー</a>
+        <a href="kakeibo.html" class="btn alt">家計簿</a>
+      </div>
+    </div>
+
+    <!-- メイン -->
+    <div class="grid">
+      <div class="left-panel">
+        <h3>予定リスト</h3>
+        <div id="event-list"></div>
+      </div>
+
+      <div class="center-panel">
+        <div class="big-card">
+          <div class="title" id="month-label">2025年10月</div>
+          <div id="calendar" class="calendar"></div>
+          <button class="btn" id="add-event-btn">＋ 予定を追加</button>
+        </div>
+      </div>
+
+      <div class="right-panel panel">
+        <h3>今日の予定</h3>
+        <div id="today-events"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 予定追加モーダル -->
+  <div class="modal" id="event-modal">
+    <div class="panel">
+      <h3>予定を追加</h3>
+      <div class="form-row">
+        <label>日付</label>
+        <input type="date" id="event-date" class="input" />
+      </div>
+      <div class="form-row">
+        <label>タイトル</label>
+        <input type="text" id="event-title" class="input" />
+      </div>
+      <div class="form-row">
+        <label>メモ</label>
+        <textarea id="event-note" class="input" rows="3"></textarea>
+      </div>
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button class="btn alt" id="cancel-btn">キャンセル</button>
+        <button class="btn" id="save-event-btn">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ======= カレンダー機能 ======= */
+    const calendar = document.getElementById("calendar");
+    const monthLabel = document.getElementById("month-label");
+    const eventList = document.getElementById("event-list");
+    const todayEvents = document.getElementById("today-events");
+
+    const modal = document.getElementById("event-modal");
+    const addEventBtn = document.getElementById("add-event-btn");
+    const saveEventBtn = document.getElementById("save-event-btn");
+    const cancelBtn = document.getElementById("cancel-btn");
+
+    const eventDateInput = document.getElementById("event-date");
+    const eventTitleInput = document.getElementById("event-title");
+    const eventNoteInput = document.getElementById("event-note");
+
+    let events = JSON.parse(localStorage.getItem("events") || "[]");
+    let currentDate = new Date();
+
+    function saveEvents() {
+      localStorage.setItem("events", JSON.stringify(events));
+    }
+
+    function renderCalendar() {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+
+      monthLabel.textContent = `${year}年${month + 1}月`;
+
+      const startDay = firstDay.getDay();
+      const totalDays = lastDay.getDate();
+      const today = new Date();
+
+      calendar.innerHTML = "";
+
+      const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
+      const header = document.createElement("div");
+      header.style.display = "grid";
+      header.style.gridTemplateColumns = "repeat(7, 1fr)";
+      header.style.textAlign = "center";
+      header.style.marginBottom = "4px";
+      dayNames.forEach(d => {
+        const div = document.createElement("div");
+        div.textContent = d;
+        div.style.color = d === "日" ? "#ef5350" : d === "土" ? "#4fc3f7" : "";
+        header.appendChild(div);
+      });
+      calendar.appendChild(header);
+
+      const grid = document.createElement("div");
+      grid.style.display = "grid";
+      grid.style.gridTemplateColumns = "repeat(7, 1fr)";
+      grid.style.gap = "4px";
+
+      for (let i = 0; i < startDay; i++) {
+        const empty = document.createElement("div");
+        grid.appendChild(empty);
+      }
+
+      for (let d = 1; d <= totalDays; d++) {
+        const cell = document.createElement("div");
+        const thisDate = new Date(year, month, d);
+        const dateStr = thisDate.toISOString().split("T")[0];
+
+        cell.textContent = d;
+        cell.style.padding = "6px";
+        cell.style.borderRadius = "6px";
+        cell.style.cursor = "pointer";
+        cell.style.textAlign = "center";
+        cell.style.background = "rgba(255,255,255,0.05)";
+        cell.style.transition = "0.2s";
+
+        const dayEvents = events.filter(e => e.date === dateStr);
+        if (dayEvents.length > 0) {
+          cell.style.background = "rgba(79,195,247,0.2)";
+          cell.title = dayEvents.map(e => e.title).join(", ");
+        }
+
+        if (
+          today.getFullYear() === year &&
+          today.getMonth() === month &&
+          today.getDate() === d
+        ) {
+          cell.style.outline = "2px solid var(--accent)";
+        }
+
+        cell.addEventListener("click", () => {
+          eventDateInput.value = dateStr;
+          modal.classList.add("show");
+        });
+
+        grid.appendChild(cell);
+      }
+
+      calendar.appendChild(grid);
+      renderEventList();
+    }
+
+    function renderEventList() {
+      eventList.innerHTML = "";
+      todayEvents.innerHTML = "";
+
+      const todayStr = new Date().toISOString().split("T")[0];
+
+      events.forEach(e => {
+        const div = document.createElement("div");
+        div.className = "event-item";
+        div.innerHTML = `
+          <div class="event-title">${e.title}</div>
+          <div class="event-time">${e.date}</div>
+        `;
+        div.addEventListener("click", () => {
+          alert(`${e.title}\n${e.note}`);
+        });
+        eventList.appendChild(div);
+
+        if (e.date === todayStr) {
+          const t = document.createElement("div");
+          t.className = "small-card";
+          t.innerHTML = `<b>${e.title}</b><br>${e.note}`;
+          todayEvents.appendChild(t);
+        }
+      });
+    }
+
+    saveEventBtn.addEventListener("click", () => {
+      const date = eventDateInput.value;
+      const title = eventTitleInput.value.trim();
+      const note = eventNoteInput.value.trim();
+      if (!date || !title) return alert("日付とタイトルは必須です");
+
+      events.push({ date, title, note });
+      saveEvents();
+      renderCalendar();
+
+      modal.classList.remove("show");
+      eventTitleInput.value = "";
+      eventNoteInput.value = "";
+    });
+
+    cancelBtn.addEventListener("click", () => modal.classList.remove("show"));
+    addEventBtn.addEventListener("click", () => {
+      eventDateInput.value = new Date().toISOString().split("T")[0];
+      modal.classList.add("show");
+    });
+
+    document.getElementById("today-label").textContent =
+      new Date().toLocaleDateString("ja-JP", { weekday: "long" });
+
+    renderCalendar();
+  </script>
+</body>
+</html>
+
+
+
