@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CAST - 共有カレンダー</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      background: linear-gradient(180deg,#000,#151515);
+      color: #fff;
+      font-family: "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: #0a0a0a;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      font-size: 22px;
+      font-weight: bold;
+      color: #00aaff;
+    }
+
+    .header-right button {
+      background: #0078d7;
+      border: none;
+      color: white;
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+
+    .calendar {
+      margin-top: 20px;
+      background: #0d0d0d;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .month-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .month-header button {
+      background: none;
+      border: none;
+      color: #00aaff;
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+
+    .day {
+      background: #111;
+      border-radius: 6px;
+      padding: 8px;
+      min-height: 80px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .day:hover {
+      background: #1a1a1a;
+    }
+
+    .day-header {
+      font-weight: bold;
+      text-align: center;
+      padding: 8px 0;
+      color: #00aaff;
+    }
+
+    .event {
+      background: #0078d7;
+      color: #fff;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-top: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top:0; left:0; right:0; bottom:0;
+      background: rgba(0,0,0,0.6);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal.show { display: flex; }
+
+    .panel {
+      background: #111;
+      border-radius: 12px;
+      padding: 20px;
+      width: 300px;
+      text-align: center;
+    }
+
+    .input {
+      width: 90%;
+      padding: 8px;
+      border-radius: 6px;
+      border: none;
+      background: #222;
+      color: #fff;
+      margin-top: 6px;
+    }
+
+    .btn {
+      background: #0078d7;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .btn:hover { background: #0099ff; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">CAST</div>
+      <div style="font-size:14px;color:#ccc;">共有カレンダー</div>
+    </div>
+    <div class="header-right">
+      <button onclick="location.href='main.html'">🏠 メインへ戻る</button>
+    </div>
+  </div>
+
+  <div class="calendar">
+    <div class="month-header">
+      <button id="prevMonth">←</button>
+      <div id="monthLabel"></div>
+      <button id="nextMonth">→</button>
+    </div>
+    <div class="grid" id="calendarGrid"></div>
+  </div>
+
+  <!-- モーダル: イベント追加 -->
+  <div class="modal" id="addModal">
+    <div class="panel">
+      <h3 id="addTitle">予定追加</h3>
+      <div id="selectedDateLabel"></div>
+      <input id="startTime" class="input" type="time">
+      <input id="endTime" class="input" type="time">
+      <input id="eventTitle" class="input" placeholder="タイトル">
+      <button class="btn" id="saveBtn">保存</button>
+      <button class="btn" onclick="closeModal('addModal')">閉じる</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db } from "./firebase-config.js";
+    import { collection, addDoc, onSnapshot, query, where, orderBy, serverTimestamp } 
+      from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+    const el = id => document.getElementById(id);
+    const user = localStorage.getItem("loginUser");
+    if (!user) location.href="index.html";
+
+    const eventsCol = collection(db, "events");
+    let events = [];
+
+    // --- モーダル操作 ---
+    window.openModal = id => el(id).classList.add("show");
+    window.closeModal = id => el(id).classList.remove("show");
+
+    // --- カレンダー描画 ---
+    let current = new Date();
+    const grid = el("calendarGrid");
+
+    function renderCalendar() {
+      const y = current.getFullYear();
+      const m = current.getMonth();
+      el("monthLabel").textContent = `${y}年 ${m+1}月`;
+
+      const first = new Date(y, m, 1);
+      const startDay = first.getDay();
+      const lastDate = new Date(y, m+1, 0).getDate();
+
+      grid.innerHTML = "";
+
+      // 曜日ヘッダー
+      ["日","月","火","水","木","金","土"].forEach(d=>{
+        const div=document.createElement("div");
+        div.className="day-header";
+        div.textContent=d;
+        grid.appendChild(div);
+      });
+
+      // 空白セル
+      for(let i=0;i<startDay;i++){
+        const e=document.createElement("div");
+        grid.appendChild(e);
+      }
+
+      // 日付セル
+      for(let d=1;d<=lastDate;d++){
+        const dateStr=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const div=document.createElement("div");
+        div.className="day";
+        div.innerHTML=`<strong>${d}</strong>`;
+        const dayEvents = events.filter(e=>e.date===dateStr);
+        dayEvents.forEach(e=>{
+          const ev=document.createElement("div");
+          ev.className="event";
+          ev.textContent=e.title;
+          div.appendChild(ev);
+        });
+        div.onclick=()=>{
+          el("selectedDateLabel").textContent=`${dateStr}`;
+          openModal("addModal");
+          el("saveBtn").onclick=async()=>{
+            const start=el("startTime").value;
+            const end=el("endTime").value;
+            const title=el("eventTitle").value||"無題";
+            await addDoc(eventsCol,{date:dateStr,start,end,title,owner:user,createdAt:serverTimestamp()});
+            closeModal("addModal");
+            el("eventTitle").value="";
+          };
+        };
+        grid.appendChild(div);
+      }
+    }
+
+    // --- 月移動 ---
+    el("prevMonth").onclick=()=>{ current.setMonth(current.getMonth()-1); renderCalendar(); };
+    el("nextMonth").onclick=()=>{ current.setMonth(current.getMonth()+1); renderCalendar(); };
+
+    // --- Firestoreリアルタイム反映 ---
+    onSnapshot(query(eventsCol, orderBy("date")), snap=>{
+      events = snap.docs.map(d=>d.data());
+      renderCalendar();
+    });
+
+    renderCalendar();
+  </script>
+</body>
+</html>
+
