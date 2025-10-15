@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>共有カレンダー - CAST</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="module" src="firebase-config.js"></script>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <div class="header-left">
+        <div class="logo">📅 共有カレンダー</div>
+      </div>
+      <div class="header-right">
+        <a href="index.html" class="btn alt">🏠 メインへ</a>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>予定一覧</h2>
+      <div id="calendar" class="calendar"></div>
+    </div>
+
+    <div class="panel">
+      <h3>予定追加</h3>
+      <div class="form-row">
+        <label>日付</label>
+        <input type="date" id="dateInput" class="input">
+      </div>
+      <div class="form-row">
+        <label>時間</label>
+        <input type="time" id="timeInput" class="input">
+      </div>
+      <div class="form-row">
+        <label>内容</label>
+        <input type="text" id="titleInput" class="input" placeholder="予定内容">
+      </div>
+      <button class="btn" id="addBtn">追加</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db } from "./firebase-config.js";
+    import { collection, addDoc, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+    const cal = document.getElementById("calendar");
+    const addBtn = document.getElementById("addBtn");
+
+    // カレンダーの初期描画
+    function drawCalendar() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = today.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+
+      cal.innerHTML = "";
+      for (let d = 1; d <= lastDay.getDate(); d++) {
+        const dateBox = document.createElement("div");
+        dateBox.className = "day";
+        if (d === today.getDate()) dateBox.classList.add("today");
+        dateBox.textContent = `${d}`;
+        cal.appendChild(dateBox);
+      }
+    }
+
+    drawCalendar();
+
+    // Firestoreから予定取得
+    const ref = collection(db, "calendarEvents");
+    onSnapshot(ref, (snapshot) => {
+      snapshot.docChanges().forEach(change => {
+        if (change.type === "added") {
+          console.log("新しい予定:", change.doc.data());
+        }
+      });
+    });
+
+    // 予定追加
+    addBtn.addEventListener("click", async () => {
+      const date = document.getElementById("dateInput").value;
+      const time = document.getElementById("timeInput").value;
+      const title = document.getElementById("titleInput").value;
+
+      if (!date || !time || !title) {
+        alert("すべて入力してください");
+        return;
+      }
+
+      await addDoc(ref, {
+        date,
+        time,
+        title,
+        createdAt: new Date()
+      });
+
+      alert("追加しました！");
+      document.getElementById("dateInput").value = "";
+      document.getElementById("timeInput").value = "";
+      document.getElementById("titleInput").value = "";
+    });
+  </script>
+</body>
+</html>
+
+
+
