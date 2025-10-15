@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CAST - 家計簿</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="header">
+    <div class="logo">💰 CAST 家計簿</div>
+    <div><a class="btn" href="index.html">← メインへ戻る</a></div>
+  </div>
+
+  <div class="panel" style="max-width:600px;margin:auto;margin-top:20px">
+    <h3>支出を追加</h3>
+    <input id="kaDate" type="date" class="input">
+    <input id="kaTitle" type="text" class="input" placeholder="内容">
+    <input id="kaAmount" type="number" class="input" placeholder="金額">
+    <select id="kaCategory" class="input">
+      <option>食費</option>
+      <option>交通</option>
+      <option>趣味</option>
+      <option>生活費</option>
+      <option>その他</option>
+    </select>
+    <button class="btn" id="saveKakeibo">保存</button>
+  </div>
+
+  <div class="panel" style="max-width:600px;margin:auto;margin-top:20px">
+    <h3>履歴</h3>
+    <div id="kakeiboList"></div>
+    <h3 style="margin-top:12px">合計: <span id="sum">0</span> 円</h3>
+  </div>
+
+  <script type="module">
+    import { db } from "./firebase-config.js";
+    import {
+      collection, addDoc, onSnapshot, orderBy, query
+    } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+    const el = id => document.getElementById(id);
+    const col = collection(db, "kakeibo");
+
+    el("saveKakeibo").onclick = async () => {
+      const date = el("kaDate").value;
+      const title = el("kaTitle").value;
+      const amount = parseInt(el("kaAmount").value);
+      const category = el("kaCategory").value;
+      await addDoc(col, { date, title, amount, category });
+      el("kaTitle").value = "";
+      el("kaAmount").value = "";
+    };
+
+    onSnapshot(query(col, orderBy("date")), snap => {
+      const list = el("kakeiboList");
+      list.innerHTML = "";
+      let total = 0;
+      snap.forEach(docu => {
+        const d = docu.data();
+        total += d.amount;
+        const row = document.createElement("div");
+        row.className = "kakeibo-item";
+        row.innerHTML = `<div>${d.date}</div><div>${d.title}</div><div>${d.category}</div><div>${d.amount}円</div>`;
+        list.appendChild(row);
+      });
+      el("sum").textContent = total.toLocaleString();
+    });
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CAST - カレンダー</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="header">
+    <div class="logo">📅 CAST カレンダー</div>
+    <div><a class="btn" href="index.html">← メインへ戻る</a></div>
+  </div>
+
+  <div class="calendar-container">
+    <div class="calendar-header">
+      <button id="prevMonth" class="btn alt">＜</button>
+      <h2 id="monthLabel"></h2>
+      <button id="nextMonth" class="btn alt">＞</button>
+    </div>
+    <div class="calendar-grid" id="calendarGrid"></div>
+  </div>
+
+  <div class="modal" id="addEventModal">
+    <div class="panel">
+      <h3>予定を追加</h3>
+      <input type="date" id="evDate" class="input">
+      <input type="time" id="evStart" class="input">
+      <input type="time" id="evEnd" class="input">
+      <input type="text" id="evTitle" class="input" placeholder="タイトル">
+      <div style="text-align:right">
+        <button class="btn" id="saveEventBtn">保存</button>
+        <button class="btn alt" onclick="closeModal('addEventModal')">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db } from "./firebase-config.js";
+    import {
+      collection, addDoc, onSnapshot, query, orderBy
+    } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+    const el = id => document.getElementById(id);
+    const eventsCol = collection(db, "events");
+
+    let current = new Date();
+
+    function renderCalendar() {
+      const year = current.getFullYear();
+      const month = current.getMonth();
+      el("monthLabel").textContent = `${year}年 ${month + 1}月`;
+
+      const firstDay = new Date(year, month, 1).getDay();
+      const lastDate = new Date(year, month + 1, 0).getDate();
+
+      const grid = el("calendarGrid");
+      grid.innerHTML = "";
+
+      for (let i = 0; i < firstDay; i++) {
+        const blank = document.createElement("div");
+        blank.className = "day-cell empty";
+        grid.appendChild(blank);
+      }
+
+      for (let d = 1; d <= lastDate; d++) {
+        const dayCell = document.createElement("div");
+        dayCell.className = "day-cell";
+        dayCell.innerHTML = `<div class="day-number">${d}</div><div class="events"></div>`;
+        dayCell.onclick = () => {
+          el("evDate").value = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+          openModal("addEventModal");
+        };
+        grid.appendChild(dayCell);
+      }
+
+      loadEvents(year, month);
+    }
+
+    function loadEvents(year, month) {
+      onSnapshot(query(eventsCol, orderBy("date")), snap => {
+        const all = snap.docs.map(d => d.data());
+        document.querySelectorAll(".day-cell").forEach(cell => {
+          const day = cell.querySelector(".day-number")?.textContent;
+          if (!day) return;
+          const dayStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+          const dayEvents = all.filter(ev => ev.date === dayStr);
+          const evBox = cell.querySelector(".events");
+          evBox.innerHTML = dayEvents.map(e => `<div class="event-mini">${e.title}</div>`).join("");
+        });
+      });
+    }
+
+    el("saveEventBtn").onclick = async () => {
+      const date = el("evDate").value;
+      const start = el("evStart").value;
+      const end = el("evEnd").value;
+      const title = el("evTitle").value;
+      await addDoc(eventsCol, { date, start, end, title });
+      closeModal("addEventModal");
+    };
+
+    el("prevMonth").onclick = () => { current.setMonth(current.getMonth() - 1); renderCalendar(); };
+    el("nextMonth").onclick = () => { current.setMonth(current.getMonth() + 1); renderCalendar(); };
+
+    window.closeModal = id => el(id).classList.remove("show");
+    window.openModal = id => el(id).classList.add("show");
+
+    renderCalendar();
+  </script>
+</body>
+</html>
+
+
+
+

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CAST - ログイン</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="center-box">
+    <div class="panel" style="max-width:320px;margin:auto;text-align:center">
+      <h2>CAST ログイン</h2>
+      <p style="margin-bottom:12px">ユーザー名を入力してください</p>
+      <input id="loginName" type="text" class="input" placeholder="ユーザー名">
+      <button id="loginBtn" class="btn" style="margin-top:12px;width:100%">ログイン</button>
+    </div>
+  </div>
+
+  <script>
+    const btn = document.getElementById("loginBtn");
+    btn.onclick = () => {
+      const name = document.getElementById("loginName").value.trim();
+      if (!name) return alert("ユーザー名を入力してください");
+      localStorage.setItem("loginUser", name);
+      location.href = "index.html";
+    };
+  </script>
+</body>
+</html>
