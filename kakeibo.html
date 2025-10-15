@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>CAST - 家計簿</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div><a href="main.html" class="btn alt">← メインへ</a></div>
+      <div style="font-size:20px;font-weight:700">家計簿</div>
+      <div><a href="calendar.html" class="btn alt">共有カレンダー</a></div>
+    </div>
+
+    <div style="display:flex;gap:12px">
+      <div style="flex:1;background:#0b0b0b;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)">
+        <h3>入力</h3>
+        <div class="form-row"><label>日付</label><input id="kbDate" class="input" type="date" /></div>
+        <div class="form-row"><label>項目</label><input id="kbTitle" class="input" type="text" /></div>
+        <div class="form-row"><label>金額</label><input id="kbAmount" class="input" type="number" /></div>
+        <div class="form-row"><label>メモ</label><input id="kbMemo" class="input" type="text" /></div>
+        <div style="text-align:right"><button class="btn" id="kbAdd">追加</button></div>
+      </div>
+
+      <div style="flex:1.3;background:#0b0b0b;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);max-height:600px;overflow:auto">
+        <h3>履歴（全ユーザー）</h3>
+        <div id="kbList"></div>
+        <div style="margin-top:12px;font-weight:700">合計: <span id="kbTotal">0</span> 円</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db } from './firebase-config.js';
+    import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+
+    const currentUser = localStorage.getItem('loginUser') || null;
+    if (!currentUser) window.location.href = 'login.html';
+
+    const kbCol = collection(db,'kakeibo');
+
+    // add
+    document.getElementById('kbAdd').onclick = async ()=>{
+      const date = document.getElementById('kbDate').value || new Date().toISOString().slice(0,10);
+      const title = document.getElementById('kbTitle').value || '無題';
+      const amount = Number(document.getElementById('kbAmount').value || 0);
+      const memo = document.getElementById('kbMemo').value || '';
+      if (!amount) return alert('金額を入力してください');
+      await addDoc(kbCol,{date,title,amount,memo,owner:currentUser,createdAt:serverTimestamp()});
+      document.getElementById('kbTitle').value=''; document.getElementById('kbAmount').value=''; document.getElementById('kbMemo').value='';
+    };
+
+    // realtime list
+    onSnapshot(query(kbCol, orderBy('createdAt','desc')), snap=>{
+      const list = document.getElementById('kbList'); list.innerHTML='';
+      let total = 0;
+      snap.forEach(docu=>{
+        const d = docu.data();
+        total += (d.amount||0);
+        const row = document.createElement('div');
+        row.style.display='flex';row.style.justifyContent='space-between';row.style.padding='8px 0';row.style.borderBottom='1px dashed rgba(255,255,255,0.03)';
+        row.innerHTML = `<div><div style="font-weight:700">${d.title}</div><div style="font-size:12px;color:var(--muted)">${d.date} ${d.memo || ''}</div></div><div style="text-align:right"><div style="font-weight:700">${d.amount} 円</div><div style="font-size:12px;color:var(--muted)">${d.owner || '誰か'}</div></div>`;
+        const delBtn = document.createElement('button'); delBtn.className='btn alt'; delBtn.textContent='削除';
+        delBtn.onclick = async ()=> {
+          if (confirm('削除しますか？')) {
+            await deleteDoc(doc(db,'kakeibo',docu.id));
+          }
+        };
+        row.appendChild(delBtn);
+        list.appendChild(row);
+      });
+      document.getElementById('kbTotal').textContent = total;
+    });
+
+  </script>
+</body>
+</html>
